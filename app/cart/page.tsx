@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useState } from 'react'
 import { useCart } from '@/components/CartProvider'
 
 export default function CartPage() {
@@ -14,24 +15,34 @@ export default function CartPage() {
     clearCart,
   } = useCart()
 
+const [checkoutEmail, setCheckoutEmail] = useState('')
+
+
 async function handleCheckout() {
+  if (!checkoutEmail.trim()) {
+    alert('Please enter your email')
+    return
+  }
+
   const res = await fetch('/api/checkout', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       items,
-      email: 'test@example.com',
+      email: checkoutEmail.trim(),
     }),
   })
 
   const data = await res.json()
 
-  if (data.error) {
-    alert(data.error)
+  if (!res.ok || data.error) {
+    alert(data.error || 'Checkout failed')
     return
   }
 
-  alert(`Order created: ${data.orderId}`)
+  if (data.url) {
+    window.location.href = data.url
+  }
 }
   return (
     <main
@@ -247,6 +258,20 @@ async function handleCheckout() {
             <p style={{ color: '#6f6268', fontSize: 14, lineHeight: 1.6 }}>
               Shipping and payment will be added at checkout.
             </p>
+<input
+  type="email"
+  value={checkoutEmail}
+  onChange={(e) => setCheckoutEmail(e.target.value)}
+  placeholder="Email for order confirmation"
+  style={{
+    width: '100%',
+    padding: '12px 14px',
+    borderRadius: 10,
+    border: '1px solid #d8c5ce',
+    marginTop: 12,
+    marginBottom: 12,
+  }}
+/>
 
    <button
   type="button"

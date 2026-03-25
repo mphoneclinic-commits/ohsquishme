@@ -14,6 +14,25 @@ export default function CartPage() {
     clearCart,
   } = useCart()
 
+async function handleCheckout() {
+  const res = await fetch('/api/checkout', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      items,
+      email: 'test@example.com',
+    }),
+  })
+
+  const data = await res.json()
+
+  if (data.error) {
+    alert(data.error)
+    return
+  }
+
+  alert(`Order created: ${data.orderId}`)
+}
   return (
     <main
       style={{
@@ -229,21 +248,22 @@ export default function CartPage() {
               Shipping and payment will be added at checkout.
             </p>
 
-            <button
-              type="button"
-              style={{
-                width: '100%',
-                padding: '14px 16px',
-                borderRadius: 10,
-                border: '1px solid #111',
-                background: '#111',
-                color: '#fff',
-                cursor: 'pointer',
-                marginTop: 12,
-              }}
-            >
-              Checkout
-            </button>
+   <button
+  type="button"
+  onClick={handleCheckout}
+  style={{
+    width: '100%',
+    padding: '14px 16px',
+    borderRadius: 10,
+    border: '1px solid #111',
+    background: '#111',
+    color: '#fff',
+    cursor: 'pointer',
+    marginTop: 12,
+  }}
+>
+  Checkout
+</button>
 
             <button
               type="button"

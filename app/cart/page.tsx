@@ -10,6 +10,7 @@ export default function CartPage() {
     items,
     itemCount,
     subtotal,
+  setItemQuantity,
     increaseQty,
     decreaseQty,
     removeItem,
@@ -101,31 +102,50 @@ export default function CartPage() {
                     </button>
                   </div>
 
-                  <div className={styles.qtyRow}>
-                    <span>Qty</span>
+<div className={styles.qtyRow}>
+  <span>Qty</span>
 
-                    <button
-                      type="button"
-                      onClick={() => decreaseQty(item.id)}
-                      className={styles.qtyButton}
-                    >
-                      -
-                    </button>
+  <button
+    type="button"
+    onClick={() => decreaseQty(item.id)}
+    className={styles.qtyButton}
+  >
+    -
+  </button>
 
-                    <div className={styles.qtyValue}>{item.quantity}</div>
+  <input
+    type="number"
+    min="1"
+    step="1"
+    value={item.quantity}
+    onChange={(e) => {
+      const value = e.target.value
 
-                    <button
-                      type="button"
-                      onClick={() => increaseQty(item.id)}
-                      className={styles.qtyButton}
-                    >
-                      +
-                    </button>
+      if (value === '') {
+        setItemQuantity(item.id, 1)
+        return
+      }
 
-                    <div className={styles.lineTotal}>
-                      ${(item.price * item.quantity).toFixed(2)}
-                    </div>
-                  </div>
+      const nextQty = Math.max(1, Math.floor(Number(value) || 1))
+      setItemQuantity(item.id, nextQty)
+    }}
+    className={styles.qtyInput}
+  />
+
+  <button
+    type="button"
+    onClick={() => increaseQty(item.id)}
+    className={styles.qtyButton}
+  >
+    +
+  </button>
+
+  <div className={styles.lineTotal}>
+    ${(item.price * item.quantity).toFixed(2)}
+  </div>
+</div>
+
+
                 </div>
               </article>
             ))}

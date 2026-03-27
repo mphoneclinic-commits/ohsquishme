@@ -21,10 +21,8 @@
   color: #7a6f76;
 }
 
-.title {
-  margin: 0;
-  font-size: 1.9rem;
-}
+
+
 
 .topActions {
   display: flex;
@@ -104,8 +102,9 @@
 }
 
 .sectionTitle {
-  margin: 0 0 4px;
-  font-size: 1.05rem;
+  font-family: var(--font-brand), Arial, sans-serif;
+  margin: 0;
+  font-size: 1.9rem;
 }
 
 .sectionText {

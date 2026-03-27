@@ -4,7 +4,7 @@ body {
   padding: 0;
   background: #fffafc;
   color: #1f1720;
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-body), Arial, Helvetica, sans-serif;
 }
 
 * {
@@ -25,4 +25,17 @@ input,
 select,
 textarea {
   font: inherit;
+}
+
+body {
+  background: linear-gradient(
+    to bottom,
+    #fffafc 0%,
+    #fff7fb 100%
+  );
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
 }

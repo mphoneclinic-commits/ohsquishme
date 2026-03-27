@@ -17,6 +17,7 @@
 }
 
 .title {
+  font-family: var(--font-brand), Arial, sans-serif;
   font-size: 3rem;
   line-height: 1.1;
   margin: 12px 0 16px;

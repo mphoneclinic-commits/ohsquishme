@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useCart } from '@/components/CartProvider'
@@ -22,9 +22,11 @@ export default function ProductPage() {
   const productId = Array.isArray(params.id) ? params.id[0] : params.id
 
   const [product, setProduct] = useState<Product | null>(null)
+  const [relatedProducts, setRelatedProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState('')
   const [added, setAdded] = useState(false)
+  const [quantity, setQuantity] = useState(1)
 
   const { addItem } = useCart()
 
@@ -35,10 +37,10 @@ export default function ProductPage() {
       return
     }
 
-    fetchProduct(productId)
+    fetchProductAndRelated(productId)
   }, [productId])
 
-  async function fetchProduct(id: string) {
+  async function fetchProductAndRelated(id: string) {
     setLoading(true)
     setErrorMessage('')
 
@@ -57,22 +59,54 @@ export default function ProductPage() {
     }
 
     setProduct(data)
+
+    const { data: relatedData, error: relatedError } = await supabase
+      .from('products')
+      .select('*')
+      .eq('active', true)
+      .neq('id', id)
+      .limit(3)
+
+    if (relatedError) {
+      console.error('Related products fetch error:', relatedError)
+      setRelatedProducts([])
+    } else {
+      setRelatedProducts(relatedData || [])
+    }
+
     setLoading(false)
   }
 
-  function handleAddToCart() {
-    if (!product) return
+  const stockMessage = useMemo(() => {
+    if (!product) return ''
+    if (product.stock <= 0) return 'Out of stock'
+    if (product.stock <= 3) return `Low stock — only ${product.stock} left`
+    return 'In stock'
+  }, [product])
 
-    addItem({
-      id: product.id,
-      name: product.name,
-      price: Number(product.price_retail),
-      image_url: product.image_url,
-    })
-
-    setAdded(true)
-    window.setTimeout(() => setAdded(false), 1200)
+  function decreaseQty() {
+    setQuantity((current) => Math.max(1, current - 1))
   }
+
+  function increaseQty() {
+    if (!product) return
+    setQuantity((current) => Math.min(product.stock || 1, current + 1))
+  }
+
+  function handleAddToCart() {
+  if (!product) return
+
+  addItem({
+    id: product.id,
+    name: product.name,
+    price: Number(product.price_retail),
+    image_url: product.image_url,
+    quantity,
+  })
+
+  setAdded(true)
+  window.setTimeout(() => setAdded(false), 1200)
+}
 
   if (loading) {
     return <main className={styles.page}>Loading product...</main>
@@ -95,48 +129,136 @@ export default function ProductPage() {
   }
 
   return (
-  <main className={styles.page}>
-    <div className={styles.layout}>
-      <div className={styles.imageWrap}>
-        {product.image_url ? (
-          <img
-            src={product.image_url}
-            alt={product.name}
-            className={styles.image}
-          />
-        ) : (
-          <div className={styles.imagePlaceholder}>No image</div>
-        )}
-      </div>
+    <main className={styles.page}>
+      <section className={styles.layout}>
+        <div className={styles.imageWrap}>
+          {product.image_url ? (
+            <img
+              src={product.image_url}
+              alt={product.name}
+              className={styles.image}
+            />
+          ) : (
+            <div className={styles.imagePlaceholder}>No image</div>
+          )}
+        </div>
 
-      <div className={styles.content}>
-        <h1 className={styles.title}>{product.name}</h1>
-        <p className={styles.price}>
-          ${Number(product.price_retail).toFixed(2)}
-        </p>
-        <p className={styles.description}>
-          {product.description || 'No description yet.'}
-        </p>
-        <p className={styles.stock}>
-          <strong>Stock:</strong> {product.stock}
-        </p>
+        <div className={styles.content}>
+          <p className={styles.eyebrow}>Taba Squishies</p>
 
-        {product.stock > 0 ? (
-          <button
-            type="button"
-            onClick={handleAddToCart}
-            className={styles.primaryButton}
-          >
-            {added ? 'Added' : 'Add to Cart'}
-          </button>
-        ) : (
-          <button type="button" disabled className={styles.disabledButton}>
-            Out of Stock
-          </button>
-        )}
-      </div>
-    </div>
-  </main>
-)
-   
+          <h1 className={styles.title}>{product.name}</h1>
+
+          <div className={styles.priceRow}>
+            <p className={styles.price}>
+              ${Number(product.price_retail).toFixed(2)}
+            </p>
+            <span
+              className={
+                product.stock > 0 ? styles.stockBadgeIn : styles.stockBadgeOut
+              }
+            >
+              {stockMessage}
+            </span>
+          </div>
+
+          <p className={styles.description}>
+            {product.description || 'No description yet.'}
+          </p>
+
+          <div className={styles.trustGrid}>
+            <div className={styles.trustCard}>
+              <strong>Fast dispatch</strong>
+              <span>Usually packed within 24 hours</span>
+            </div>
+            <div className={styles.trustCard}>
+              <strong>Ships from Australia</strong>
+              <span>Local handling and support</span>
+            </div>
+            <div className={styles.trustCard}>
+              <strong>Cute gift-ready item</strong>
+              <span>Great for collecting or gifting</span>
+            </div>
+          </div>
+
+          {product.stock > 0 ? (
+            <div className={styles.buyBox}>
+              <div className={styles.quantityRow}>
+                <span className={styles.quantityLabel}>Quantity</span>
+
+                <div className={styles.qtyControl}>
+                  <button
+                    type="button"
+                    onClick={decreaseQty}
+                    className={styles.qtyButton}
+                  >
+                    -
+                  </button>
+                  <div className={styles.qtyValue}>{quantity}</div>
+                  <button
+                    type="button"
+                    onClick={increaseQty}
+                    className={styles.qtyButton}
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleAddToCart}
+                className={styles.primaryButton}
+              >
+                {added
+                  ? 'Added to cart'
+                  : `Add ${quantity} to cart · $${(
+                      Number(product.price_retail) * quantity
+                    ).toFixed(2)}`}
+              </button>
+            </div>
+          ) : (
+            <button type="button" disabled className={styles.disabledButton}>
+              Out of Stock
+            </button>
+          )}
+        </div>
+      </section>
+
+      {relatedProducts.length > 0 ? (
+        <section className={styles.relatedSection}>
+          <div className={styles.relatedHeader}>
+            <h2 className={styles.relatedTitle}>You might also like</h2>
+            <p className={styles.relatedText}>
+              More cute picks from the collection.
+            </p>
+          </div>
+
+          <div className={styles.relatedGrid}>
+            {relatedProducts.map((item) => (
+              <a
+                key={item.id}
+                href={`/product/${item.id}`}
+                className={styles.relatedCard}
+              >
+                {item.image_url ? (
+                  <img
+                    src={item.image_url}
+                    alt={item.name}
+                    className={styles.relatedImage}
+                  />
+                ) : (
+                  <div className={styles.relatedImagePlaceholder}>No image</div>
+                )}
+
+                <h3 className={styles.relatedName}>{item.name}</h3>
+                <p className={styles.relatedPrice}>
+                  ${Number(item.price_retail).toFixed(2)}
+                </p>
+              </a>
+            ))}
+          </div>
+        </section>
+      ) : null}
+    </main>
+  )
 }

@@ -5,6 +5,7 @@
 }
 
 .title {
+  font-family: var(--font-brand), Arial, sans-serif;
   font-size: 2.4rem;
   margin-bottom: 12px;
 }
@@ -95,6 +96,17 @@
   cursor: pointer;
 }
 
+.qtyInput {
+  width: 64px;
+  min-width: 64px;
+  text-align: center;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #d8c5ce;
+  background: #fff;
+  font: inherit;
+}
+
 .qtyRow {
   margin-top: 14px;
   display: flex;
@@ -121,6 +133,7 @@
 .lineTotal {
   margin-left: auto;
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .summary {

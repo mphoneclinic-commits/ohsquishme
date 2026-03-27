@@ -5,6 +5,7 @@
 }
 
 .title {
+  font-family: var(--font-brand), Arial, sans-serif;
   font-size: 2.4rem;
   margin-bottom: 12px;
 }

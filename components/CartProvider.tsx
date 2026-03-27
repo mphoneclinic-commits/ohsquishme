@@ -17,11 +17,20 @@ export type CartItem = {
   quantity: number
 }
 
+type AddCartItemInput = {
+  id: string
+  name: string
+  price: number
+  image_url: string | null
+  quantity?: number
+}
+
 type CartContextType = {
   items: CartItem[]
   itemCount: number
   subtotal: number
-  addItem: (item: Omit<CartItem, 'quantity'>) => void
+  addItem: (item: AddCartItemInput) => void
+  setItemQuantity: (id: string, quantity: number) => void
   increaseQty: (id: string) => void
   decreaseQty: (id: string) => void
   removeItem: (id: string) => void
@@ -62,17 +71,44 @@ export default function CartProvider({ children }: { children: ReactNode }) {
     }
   }, [items, hydrated])
 
-  function addItem(item: Omit<CartItem, 'quantity'>) {
+  function addItem(item: AddCartItemInput) {
+    const qtyToAdd = Math.max(1, Number(item.quantity ?? 1))
+
     setItems((current) => {
       const existing = current.find((x) => x.id === item.id)
 
       if (existing) {
         return current.map((x) =>
-          x.id === item.id ? { ...x, quantity: x.quantity + 1 } : x
+          x.id === item.id
+            ? { ...x, quantity: x.quantity + qtyToAdd }
+            : x
         )
       }
 
-      return [...current, { ...item, quantity: 1 }]
+      return [
+        ...current,
+        {
+          id: item.id,
+          name: item.name,
+          price: item.price,
+          image_url: item.image_url,
+          quantity: qtyToAdd,
+        },
+      ]
+    })
+  }
+
+  function setItemQuantity(id: string, quantity: number) {
+    const nextQty = Math.max(0, Math.floor(Number(quantity) || 0))
+
+    setItems((current) => {
+      if (nextQty === 0) {
+        return current.filter((item) => item.id !== id)
+      }
+
+      return current.map((item) =>
+        item.id === id ? { ...item, quantity: nextQty } : item
+      )
     })
   }
 
@@ -117,6 +153,7 @@ export default function CartProvider({ children }: { children: ReactNode }) {
     itemCount,
     subtotal,
     addItem,
+    setItemQuantity,
     increaseQty,
     decreaseQty,
     removeItem,

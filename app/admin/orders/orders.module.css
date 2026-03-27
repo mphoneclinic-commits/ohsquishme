@@ -1,0 +1,259 @@
+.page {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 32px 24px 56px;
+}
+
+.topBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 1.4px;
+  color: #7a6f76;
+}
+
+.title {
+  margin: 0;
+  font-size: 2.2rem;
+}
+
+.topActions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.secondaryLink {
+  text-decoration: none;
+  border: 1px solid #d9ccd3;
+  background: #fff;
+  border-radius: 12px;
+  padding: 12px 14px;
+  color: inherit;
+}
+
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+  margin-bottom: 22px;
+}
+
+.summaryCard {
+  border: 1px solid #eadce3;
+  background: #fff;
+  border-radius: 16px;
+  padding: 18px;
+}
+
+.summaryLabel {
+  font-size: 13px;
+  color: #7a6f76;
+  margin-bottom: 6px;
+}
+
+.summaryValue {
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.filterForm {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 220px auto;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.input,
+.select {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid #d9ccd3;
+  background: #fff;
+  font: inherit;
+}
+
+.primaryButton {
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px solid #111;
+  background: #111;
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+}
+
+.emptyCard {
+  border: 1px solid #eadce3;
+  border-radius: 18px;
+  background: #fff;
+  padding: 24px;
+}
+
+.orderList {
+  display: grid;
+  gap: 18px;
+}
+
+.orderCard {
+  border: 1px solid #eadce3;
+  border-radius: 18px;
+  background: #fff;
+  padding: 20px;
+}
+
+.orderTop {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: start;
+}
+
+.orderHeadingRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.orderTitle {
+  margin: 0;
+  font-size: 20px;
+}
+
+.statusBadge {
+  display: inline-block;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #f5ecf1;
+  border: 1px solid #eadce3;
+  font-size: 13px;
+  text-transform: capitalize;
+}
+
+.infoGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.infoCard {
+  border: 1px solid #f0e5ea;
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: #fffdfd;
+}
+
+.infoLabel {
+  font-size: 12px;
+  color: #7a6f76;
+  margin-bottom: 4px;
+}
+
+.infoValue {
+  font-size: 14px;
+  word-break: break-word;
+}
+
+.lineItemsSection {
+  margin-top: 18px;
+  border-top: 1px solid #f0e5ea;
+  padding-top: 16px;
+}
+
+.lineItemsTitle {
+  margin: 0 0 12px;
+  font-size: 16px;
+}
+
+.mutedText {
+  margin: 0;
+  color: #7a6f76;
+}
+
+.lineItemsList {
+  display: grid;
+  gap: 10px;
+}
+
+.lineItem {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 100px 100px 120px;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #fff8fb;
+  align-items: center;
+}
+
+.lineItemMain {
+  min-width: 0;
+}
+
+.lineItemName {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lineItemSubtext {
+  font-size: 13px;
+  color: #7a6f76;
+}
+
+.lineItemCell {
+  font-size: 14px;
+}
+
+.statusForm {
+  min-width: 220px;
+  display: grid;
+  gap: 10px;
+}
+
+.statusMessageSuccess {
+  font-size: 13px;
+  color: #1d6f42;
+}
+
+.statusMessageError {
+  font-size: 13px;
+  color: #b42318;
+}
+
+.logoutButton {
+  text-decoration: none;
+  border: 1px solid #d9ccd3;
+  background: #fff;
+  border-radius: 12px;
+  padding: 12px 14px;
+  cursor: pointer;
+  font: inherit;
+}
+
+@media (max-width: 900px) {
+  .filterForm {
+    grid-template-columns: 1fr;
+  }
+
+  .orderTop {
+    grid-template-columns: 1fr;
+  }
+
+  .lineItem {
+    grid-template-columns: 1fr;
+  }
+}

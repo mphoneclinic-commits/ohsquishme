@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import styles from './orders.module.css'
 
 export default function OrderStatusForm({
   orderId,
@@ -38,23 +39,11 @@ export default function OrderStatusForm({
   }
 
   return (
-    <div
-      style={{
-        minWidth: 220,
-        display: 'grid',
-        gap: 10,
-      }}
-    >
+    <div className={styles.statusForm}>
       <select
         value={status}
         onChange={(e) => setStatus(e.target.value)}
-        style={{
-          width: '100%',
-          padding: '12px 14px',
-          borderRadius: 12,
-          border: '1px solid #d9ccd3',
-          background: '#fff',
-        }}
+        className={styles.select}
       >
         {statusOptions.map((option) => (
           <option key={option} value={option}>
@@ -67,26 +56,18 @@ export default function OrderStatusForm({
         type="button"
         onClick={handleSave}
         disabled={saving}
-        style={{
-          width: '100%',
-          padding: '12px 14px',
-          borderRadius: 12,
-          border: '1px solid #111',
-          background: '#111',
-          color: '#fff',
-          cursor: saving ? 'wait' : 'pointer',
-          opacity: saving ? 0.75 : 1,
-        }}
+        className={styles.primaryButton}
       >
         {saving ? 'Saving...' : 'Update Status'}
       </button>
 
       {message ? (
         <div
-          style={{
-            fontSize: 13,
-            color: message === 'Saved' ? '#1d6f42' : '#b42318',
-          }}
+          className={
+            message === 'Saved'
+              ? styles.statusMessageSuccess
+              : styles.statusMessageError
+          }
         >
           {message}
         </div>

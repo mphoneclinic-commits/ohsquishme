@@ -1,0 +1,68 @@
+.page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.card {
+  width: 100%;
+  max-width: 420px;
+  border: 1px solid #eadce3;
+  border-radius: 18px;
+  background: #fff;
+  padding: 24px;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 1.4px;
+  color: #7a6f76;
+}
+
+.title {
+  margin-top: 0;
+  margin-bottom: 10px;
+}
+
+.description {
+  margin-top: 0;
+  color: #7a6f76;
+}
+
+.form {
+  display: grid;
+  gap: 12px;
+}
+
+.input {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid #d9ccd3;
+  background: #fff;
+  font: inherit;
+}
+
+.primaryButton {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid #111;
+  background: #111;
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+}
+
+.primaryButtonDisabled {
+  opacity: 0.75;
+  cursor: wait;
+}
+
+.error {
+  font-size: 13px;
+  color: #b42318;
+}

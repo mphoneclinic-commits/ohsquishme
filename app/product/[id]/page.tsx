@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useCart } from '@/components/CartProvider'
+import styles from './product.module.css'
 
 type Product = {
   id: string
@@ -74,114 +75,68 @@ export default function ProductPage() {
   }
 
   if (loading) {
-    return <main style={{ padding: 24 }}>Loading product...</main>
+    return <main className={styles.page}>Loading product...</main>
   }
 
   if (errorMessage) {
     return (
-      <main style={{ padding: 24 }}>
-        <p style={{ color: 'crimson' }}>Error: {errorMessage}</p>
+      <main className={styles.page}>
+        <p className={styles.error}>Error: {errorMessage}</p>
       </main>
     )
   }
 
   if (!product) {
     return (
-      <main style={{ padding: 24 }}>
+      <main className={styles.page}>
         <p>Product not found.</p>
       </main>
     )
   }
 
   return (
-    <main
-      style={{
-        padding: '40px 24px',
-        maxWidth: 1100,
-        margin: '0 auto',
-      }}
-    >
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-          gap: 32,
-        }}
-      >
-        <div>
-          {product.image_url ? (
-            <img
-              src={product.image_url}
-              alt={product.name}
-              style={{
-                width: '100%',
-                borderRadius: 16,
-                background: '#fff',
-              }}
-            />
-          ) : (
-            <div
-              style={{
-                width: '100%',
-                aspectRatio: '1 / 1',
-                borderRadius: 16,
-                background: '#eee',
-                display: 'grid',
-                placeItems: 'center',
-              }}
-            >
-              No image
-            </div>
-          )}
-        </div>
-
-        <div>
-          <h1 style={{ fontSize: '2.2rem', marginTop: 0 }}>{product.name}</h1>
-          <p style={{ fontSize: '1.5rem', marginBottom: 12 }}>
-            ${Number(product.price_retail).toFixed(2)}
-          </p>
-          <p style={{ lineHeight: 1.7 }}>
-            {product.description || 'No description yet.'}
-          </p>
-          <p>
-            <strong>Stock:</strong> {product.stock}
-          </p>
-
-          {product.stock > 0 ? (
-  <button
-    type="button"
-    onClick={handleAddToCart}
-    style={{
-      marginTop: 16,
-      padding: '14px 18px',
-      borderRadius: 10,
-      border: '1px solid #111',
-      background: '#111',
-      color: '#fff',
-      cursor: 'pointer',
-    }}
-  >
-    {added ? 'Added' : 'Add to Cart'}
-  </button>
-) : (
-  <button
-    type="button"
-    disabled
-    style={{
-      marginTop: 16,
-      padding: '14px 18px',
-      borderRadius: 10,
-      border: '1px solid #ccc',
-      background: '#eee',
-      color: '#777',
-      cursor: 'not-allowed',
-    }}
-  >
-    Out of Stock
-  </button>
-)}
-        </div>
+  <main className={styles.page}>
+    <div className={styles.layout}>
+      <div className={styles.imageWrap}>
+        {product.image_url ? (
+          <img
+            src={product.image_url}
+            alt={product.name}
+            className={styles.image}
+          />
+        ) : (
+          <div className={styles.imagePlaceholder}>No image</div>
+        )}
       </div>
-    </main>
-  )
+
+      <div className={styles.content}>
+        <h1 className={styles.title}>{product.name}</h1>
+        <p className={styles.price}>
+          ${Number(product.price_retail).toFixed(2)}
+        </p>
+        <p className={styles.description}>
+          {product.description || 'No description yet.'}
+        </p>
+        <p className={styles.stock}>
+          <strong>Stock:</strong> {product.stock}
+        </p>
+
+        {product.stock > 0 ? (
+          <button
+            type="button"
+            onClick={handleAddToCart}
+            className={styles.primaryButton}
+          >
+            {added ? 'Added' : 'Add to Cart'}
+          </button>
+        ) : (
+          <button type="button" disabled className={styles.disabledButton}>
+            Out of Stock
+          </button>
+        )}
+      </div>
+    </div>
+  </main>
+)
+   
 }

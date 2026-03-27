@@ -3,6 +3,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import CartProvider from '@/components/CartProvider'
 import HeaderCartLink from '@/components/HeaderCartLink'
+import styles from './layout.module.css'
 
 export const metadata: Metadata = {
   title: 'Taba Squishies',
@@ -18,50 +19,27 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <CartProvider>
-          <header
-            style={{
-              borderBottom: '1px solid #eadce3',
-              background: '#fff',
-            }}
-          >
-            <div
-              style={{
-                maxWidth: 1200,
-                margin: '0 auto',
-                padding: '18px 24px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 16,
-              }}
-            >
-              <Link
-                href="/"
-                style={{
-                  textDecoration: 'none',
-                  fontWeight: 700,
-                  fontSize: 20,
-                }}
-              >
+          <header className={styles.header}>
+            <div className={styles.headerInner}>
+              <Link href="/" className={styles.brand}>
                 Taba Squishies
               </Link>
 
-              <nav
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 16,
-                  flexWrap: 'wrap',
-                }}
-              >
-                <Link href="/" style={{ textDecoration: 'none' }}>
+              <nav className={styles.nav}>
+                <Link href="/" className={styles.navLink}>
                   Home
                 </Link>
-                <Link href="/shop" style={{ textDecoration: 'none' }}>
+                <Link href="/shop" className={styles.navLink}>
                   Shop
                 </Link>
-                <Link href="/account" style={{ textDecoration: 'none' }}>
+                <Link href="/account" className={styles.navLink}>
                   Account
+                </Link>
+                <Link href="/admin/orders" className={styles.navLink}>
+                  Admin Orders
+                </Link>
+                <Link href="/admin/products" className={styles.navLink}>
+                  Admin Products
                 </Link>
                 <HeaderCartLink />
               </nav>

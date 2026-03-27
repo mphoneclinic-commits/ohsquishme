@@ -3,12 +3,14 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdmin } from '@/lib/auth'
 import OrderStatusForm from './OrderStatusForm'
 import AdminLogoutButton from './AdminLogoutButton'
+import styles from './orders.module.css'
 
 export const dynamic = 'force-dynamic'
 
 type OrderRow = {
   id: string
   email: string | null
+  phone: string | null
   total: number | string | null
   status: string | null
   created_at: string | null
@@ -49,7 +51,6 @@ const STATUS_OPTIONS = [
   'cancelled',
 ]
 
-
 export default async function AdminOrdersPage({
   searchParams,
 }: {
@@ -58,7 +59,7 @@ export default async function AdminOrdersPage({
     status?: string
   }>
 }) {
-await requireAdmin()
+  await requireAdmin()
 
   const params = (await searchParams) || {}
   const q = (params.q || '').trim().toLowerCase()
@@ -66,7 +67,9 @@ await requireAdmin()
 
   const { data: ordersData, error: ordersError } = await supabaseAdmin
     .from('orders')
-    .select('id, email, total, status, created_at, paid_at, stripe_session_id')
+    .select(
+      'id, email, phone, total, status, created_at, paid_at, stripe_session_id'
+    )
     .order('created_at', { ascending: false })
 
   if (ordersError) {
@@ -107,6 +110,7 @@ await requireAdmin()
     const haystack = [
       order.id,
       order.email || '',
+      order.phone || '',
       order.status || '',
       formatMoney(order.total),
       ...(itemsByOrderId.get(order.id) || []).map((item) => item.name || ''),
@@ -129,72 +133,26 @@ await requireAdmin()
   }
 
   return (
-    <main
-      style={{
-        maxWidth: 1280,
-        margin: '0 auto',
-        padding: '32px 24px 56px',
-      }}
-    >
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'flex-start',
-          gap: 16,
-          flexWrap: 'wrap',
-          marginBottom: 24,
-        }}
-      >
+    <main className={styles.page}>
+      <div className={styles.topBar}>
         <div>
-          <p
-            style={{
-              margin: '0 0 8px',
-              fontSize: 13,
-              textTransform: 'uppercase',
-              letterSpacing: 1.4,
-              color: '#7a6f76',
-            }}
-          >
-            Admin
-          </p>
-          <h1 style={{ margin: 0, fontSize: '2.2rem' }}>Orders Dashboard</h1>
+          <p className={styles.eyebrow}>Admin</p>
+          <h1 className={styles.title}>Orders Dashboard</h1>
         </div>
 
-     <div
-  style={{
-    display: 'flex',
-    gap: 10,
-    flexWrap: 'wrap',
-  }}
->
-  <Link
-    href="/shop"
-    style={{
-      textDecoration: 'none',
-      border: '1px solid #d9ccd3',
-      background: '#fff',
-      borderRadius: 12,
-      padding: '12px 14px',
-    }}
-  >
-    View Store
-  </Link>
+        <div className={styles.topActions}>
 
-  <AdminLogoutButton />
-</div>
-
-
+          <Link href="/shop" className={styles.secondaryLink}>
+            View Store
+          </Link>
+<Link href="/admin/products" className={styles.secondaryLink}>
+  Products
+</Link>
+          <AdminLogoutButton />
+        </div>
       </div>
 
-      <section
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-          gap: 14,
-          marginBottom: 22,
-        }}
-      >
+      <section className={styles.summaryGrid}>
         <SummaryCard label="All Orders" value={counts.all} />
         <SummaryCard label="Paid" value={counts.paid} />
         <SummaryCard label="Packed" value={counts.packed} />
@@ -203,39 +161,19 @@ await requireAdmin()
         <SummaryCard label="Payment Failed" value={counts.payment_failed} />
       </section>
 
-      <form
-        method="GET"
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'minmax(0, 1fr) 220px auto',
-          gap: 12,
-          marginBottom: 24,
-        }}
-      >
+      <form method="GET" className={styles.filterForm}>
         <input
           type="text"
           name="q"
           defaultValue={q}
-          placeholder="Search by email, order id, item name..."
-          style={{
-            width: '100%',
-            padding: '12px 14px',
-            borderRadius: 12,
-            border: '1px solid #d9ccd3',
-            background: '#fff',
-          }}
+          placeholder="Search by email, phone, order id, item name..."
+          className={styles.input}
         />
 
         <select
           name="status"
           defaultValue={statusFilter}
-          style={{
-            width: '100%',
-            padding: '12px 14px',
-            borderRadius: 12,
-            border: '1px solid #d9ccd3',
-            background: '#fff',
-          }}
+          className={styles.select}
         >
           <option value="">All statuses</option>
           {STATUS_OPTIONS.map((status) => (
@@ -245,39 +183,15 @@ await requireAdmin()
           ))}
         </select>
 
-        <button
-          type="submit"
-          style={{
-            padding: '12px 16px',
-            borderRadius: 12,
-            border: '1px solid #111',
-            background: '#111',
-            color: '#fff',
-            cursor: 'pointer',
-          }}
-        >
+        <button type="submit" className={styles.primaryButton}>
           Apply
         </button>
       </form>
 
       {filteredOrders.length === 0 ? (
-        <div
-          style={{
-            border: '1px solid #eadce3',
-            borderRadius: 18,
-            background: '#fff',
-            padding: 24,
-          }}
-        >
-          No matching orders found.
-        </div>
+        <div className={styles.emptyCard}>No matching orders found.</div>
       ) : (
-        <section
-          style={{
-            display: 'grid',
-            gap: 18,
-          }}
-        >
+        <section className={styles.orderList}>
           {filteredOrders.map((order) => {
             const orderItems = itemsByOrderId.get(order.id) || []
             const itemCount = orderItems.reduce(
@@ -286,61 +200,22 @@ await requireAdmin()
             )
 
             return (
-              <article
-                key={order.id}
-                style={{
-                  border: '1px solid #eadce3',
-                  borderRadius: 18,
-                  background: '#fff',
-                  padding: 20,
-                }}
-              >
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'minmax(0, 1fr) auto',
-                    gap: 18,
-                    alignItems: 'start',
-                  }}
-                >
+              <article key={order.id} className={styles.orderCard}>
+                <div className={styles.orderTop}>
                   <div>
-                    <div
-                      style={{
-                        display: 'flex',
-                        flexWrap: 'wrap',
-                        gap: 10,
-                        alignItems: 'center',
-                        marginBottom: 12,
-                      }}
-                    >
-                      <h2 style={{ margin: 0, fontSize: 20 }}>
+                    <div className={styles.orderHeadingRow}>
+                      <h2 className={styles.orderTitle}>
                         Order {order.id.slice(0, 8)}
                       </h2>
 
-                      <span
-                        style={{
-                          display: 'inline-block',
-                          padding: '6px 10px',
-                          borderRadius: 999,
-                          background: '#f5ecf1',
-                          border: '1px solid #eadce3',
-                          fontSize: 13,
-                          textTransform: 'capitalize',
-                        }}
-                      >
+                      <span className={styles.statusBadge}>
                         {order.status || 'unknown'}
                       </span>
                     </div>
 
-                    <div
-                      style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-                        gap: 10,
-                        marginBottom: 16,
-                      }}
-                    >
+                    <div className={styles.infoGrid}>
                       <InfoRow label="Customer Email" value={order.email || '—'} />
+                      <InfoRow label="Phone" value={order.phone || '—'} />
                       <InfoRow label="Total" value={formatMoney(order.total)} />
                       <InfoRow label="Created" value={formatDate(order.created_at)} />
                       <InfoRow label="Paid At" value={formatDate(order.paid_at)} />
@@ -359,55 +234,31 @@ await requireAdmin()
                   />
                 </div>
 
-                <div
-                  style={{
-                    marginTop: 18,
-                    borderTop: '1px solid #f0e5ea',
-                    paddingTop: 16,
-                  }}
-                >
-                  <h3 style={{ margin: '0 0 12px', fontSize: 16 }}>Line Items</h3>
+                <div className={styles.lineItemsSection}>
+                  <h3 className={styles.lineItemsTitle}>Line Items</h3>
 
                   {orderItems.length === 0 ? (
-                    <p style={{ margin: 0, color: '#7a6f76' }}>No items found.</p>
+                    <p className={styles.mutedText}>No items found.</p>
                   ) : (
-                    <div
-                      style={{
-                        display: 'grid',
-                        gap: 10,
-                      }}
-                    >
+                    <div className={styles.lineItemsList}>
                       {orderItems.map((item) => (
-                        <div
-                          key={item.id}
-                          style={{
-                            display: 'grid',
-                            gridTemplateColumns: 'minmax(0, 1fr) 100px 100px 120px',
-                            gap: 12,
-                            padding: '12px 14px',
-                            borderRadius: 12,
-                            background: '#fff8fb',
-                          }}
-                        >
-                          <div style={{ minWidth: 0 }}>
-                            <div
-                              style={{
-                                fontWeight: 600,
-                                whiteSpace: 'nowrap',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                              }}
-                            >
+                        <div key={item.id} className={styles.lineItem}>
+                          <div className={styles.lineItemMain}>
+                            <div className={styles.lineItemName}>
                               {item.name || 'Unnamed item'}
                             </div>
-                            <div style={{ fontSize: 13, color: '#7a6f76' }}>
+                            <div className={styles.lineItemSubtext}>
                               Product ID: {item.product_id || '—'}
                             </div>
                           </div>
 
-                          <div>Qty: {item.quantity || 0}</div>
-                          <div>{formatMoney(item.price)}</div>
-                          <div>
+                          <div className={styles.lineItemCell}>
+                            Qty: {item.quantity || 0}
+                          </div>
+                          <div className={styles.lineItemCell}>
+                            {formatMoney(item.price)}
+                          </div>
+                          <div className={styles.lineItemCell}>
                             {formatMoney(
                               Number(item.price || 0) * Number(item.quantity || 0)
                             )}
@@ -434,16 +285,9 @@ function SummaryCard({
   value: number
 }) {
   return (
-    <div
-      style={{
-        border: '1px solid #eadce3',
-        background: '#fff',
-        borderRadius: 16,
-        padding: 18,
-      }}
-    >
-      <div style={{ fontSize: 13, color: '#7a6f76', marginBottom: 6 }}>{label}</div>
-      <div style={{ fontSize: 28, fontWeight: 700 }}>{value}</div>
+    <div className={styles.summaryCard}>
+      <div className={styles.summaryLabel}>{label}</div>
+      <div className={styles.summaryValue}>{value}</div>
     </div>
   )
 }
@@ -456,23 +300,9 @@ function InfoRow({
   value: string
 }) {
   return (
-    <div
-      style={{
-        border: '1px solid #f0e5ea',
-        borderRadius: 12,
-        padding: '10px 12px',
-        background: '#fffdfd',
-      }}
-    >
-      <div style={{ fontSize: 12, color: '#7a6f76', marginBottom: 4 }}>{label}</div>
-      <div
-        style={{
-          fontSize: 14,
-          wordBreak: 'break-word',
-        }}
-      >
-        {value}
-      </div>
+    <div className={styles.infoCard}>
+      <div className={styles.infoLabel}>{label}</div>
+      <div className={styles.infoValue}>{value}</div>
     </div>
   )
 }

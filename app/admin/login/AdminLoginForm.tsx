@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import styles from './login.module.css'
 
 export default function AdminLoginForm() {
   const router = useRouter()
@@ -34,13 +35,7 @@ export default function AdminLoginForm() {
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      style={{
-        display: 'grid',
-        gap: 12,
-      }}
-    >
+    <form onSubmit={handleSubmit} className={styles.form}>
       <input
         type="email"
         value={email}
@@ -48,13 +43,7 @@ export default function AdminLoginForm() {
         placeholder="Admin email"
         autoComplete="email"
         required
-        style={{
-          width: '100%',
-          padding: '12px 14px',
-          borderRadius: 12,
-          border: '1px solid #d9ccd3',
-          background: '#fff',
-        }}
+        className={styles.input}
       />
 
       <input
@@ -64,35 +53,20 @@ export default function AdminLoginForm() {
         placeholder="Password"
         autoComplete="current-password"
         required
-        style={{
-          width: '100%',
-          padding: '12px 14px',
-          borderRadius: 12,
-          border: '1px solid #d9ccd3',
-          background: '#fff',
-        }}
+        className={styles.input}
       />
 
       <button
         type="submit"
         disabled={saving}
-        style={{
-          width: '100%',
-          padding: '12px 14px',
-          borderRadius: 12,
-          border: '1px solid #111',
-          background: '#111',
-          color: '#fff',
-          cursor: saving ? 'wait' : 'pointer',
-          opacity: saving ? 0.75 : 1,
-        }}
+        className={`${styles.primaryButton} ${
+          saving ? styles.primaryButtonDisabled : ''
+        }`}
       >
         {saving ? 'Signing in...' : 'Sign in'}
       </button>
 
-      {errorMessage ? (
-        <div style={{ fontSize: 13, color: '#b42318' }}>{errorMessage}</div>
-      ) : null}
+      {errorMessage ? <div className={styles.error}>{errorMessage}</div> : null}
     </form>
   )
 }

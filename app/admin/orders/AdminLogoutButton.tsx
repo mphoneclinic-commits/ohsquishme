@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import styles from './orders.module.css'
 
 export default function AdminLogoutButton() {
   const router = useRouter()
@@ -17,14 +18,7 @@ export default function AdminLogoutButton() {
     <button
       type="button"
       onClick={handleLogout}
-      style={{
-        textDecoration: 'none',
-        border: '1px solid #d9ccd3',
-        background: '#fff',
-        borderRadius: 12,
-        padding: '12px 14px',
-        cursor: 'pointer',
-      }}
+      className={styles.logoutButton}
     >
       Sign out
     </button>

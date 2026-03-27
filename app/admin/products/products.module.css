@@ -1,0 +1,391 @@
+.page {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 24px 20px 44px;
+}
+
+.topBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.eyebrow {
+  margin: 0 0 6px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: #7a6f76;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.9rem;
+}
+
+.topActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.secondaryLink {
+  text-decoration: none;
+  border: 1px solid #d9ccd3;
+  background: #fff;
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: inherit;
+  font-size: 14px;
+}
+.filePicker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  border: 1px solid #d9ccd3;
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: #fff;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.hiddenFileInput {
+  display: none;
+}
+
+.filePickerButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #111;
+  background: #111;
+  color: #fff;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.filePickerText {
+  font-size: 13px;
+  color: #5d5158;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.layout {
+  display: grid;
+  gap: 18px;
+}
+
+.createCard,
+.productCard {
+  border: 1px solid #eadce3;
+  border-radius: 16px;
+  background: #fff;
+  padding: 16px;
+  box-shadow: 0 4px 14px rgba(30, 18, 24, 0.03);
+  overflow: hidden;
+}
+
+.sectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.sectionTitle {
+  margin: 0 0 4px;
+  font-size: 1.05rem;
+}
+
+.sectionText {
+  margin: 0;
+  color: #6c5d65;
+  font-size: 13px;
+}
+
+.createGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 270px;
+  gap: 14px;
+  align-items: start;
+}
+
+.createMain,
+.createSide,
+.listSection,
+.productList,
+.productContent,
+.metricCards,
+.metricsRow,
+.row2,
+.metaRow {
+  min-width: 0;
+}
+
+.createMain,
+.createSide {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+
+.productList {
+  display: grid;
+  gap: 12px;
+}
+
+.productCardTop {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.productImageWrap {
+  width: 120px;
+  min-width: 120px;
+  flex-shrink: 0;
+}
+
+.productImage {
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 12px;
+  background: #f3f3f3;
+  border: 1px solid #eee3e8;
+}
+
+.imagePlaceholder {
+  width: 120px;
+  height: 120px;
+  border-radius: 12px;
+  background: #f0edf0;
+  display: grid;
+  place-items: center;
+  color: #7a6f76;
+  text-align: center;
+  border: 1px solid #eee3e8;
+  font-size: 14px;
+}
+
+.productContent {
+  display: grid;
+  gap: 10px;
+}
+
+.productHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.nameInput {
+  width: 100%;
+  max-width: 420px;
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #d9ccd3;
+  background: #fff;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.activeBadge,
+.inactiveBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.activeBadge {
+  background: #ecfdf3;
+  color: #067647;
+  border: 1px solid #b7ebcd;
+}
+
+.inactiveBadge {
+  background: #fff4f4;
+  color: #b42318;
+  border: 1px solid #f3c2bf;
+}
+
+.metricCards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.metricCard {
+  border: 1px solid #eee3e8;
+  border-radius: 12px;
+  padding: 10px;
+  background: #fffafc;
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.metricLabel {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  color: #7a6f76;
+}
+
+.metricInput {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  padding: 9px 10px;
+  border-radius: 8px;
+  border: 1px solid #d9ccd3;
+  background: #fff;
+  font: inherit;
+  box-sizing: border-box;
+}
+
+.metricValuePreview {
+  font-size: 12px;
+  color: #5d5158;
+}
+
+.metaRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.row2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.metricsRow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.input,
+.textarea {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #d9ccd3;
+  background: #fff;
+  font: inherit;
+  box-sizing: border-box;
+}
+
+.textarea {
+  min-height: 96px;
+  resize: vertical;
+  line-height: 1.45;
+}
+
+.checkboxLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #3f353c;
+  min-width: 0;
+}
+
+.cardActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid #f1e7eb;
+}
+
+.primaryButton {
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid #111;
+  background: #111;
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 14px;
+}
+
+.dangerButton {
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid #c84d64;
+  background: #fff5f7;
+  color: #8e2137;
+  cursor: pointer;
+  font: inherit;
+  font-size: 14px;
+}
+
+.message {
+  font-size: 12px;
+  color: #1d6f42;
+}
+
+@media (max-width: 980px) {
+  .createGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .productCardTop {
+    grid-template-columns: 1fr;
+  }
+
+  .productImageWrap,
+  .productImage,
+  .imagePlaceholder {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1 / 1;
+  }
+}
+
+@media (max-width: 760px) {
+  .metricCards,
+  .metricsRow,
+  .row2,
+  .metaRow {
+    grid-template-columns: 1fr;
+  }
+
+  .nameInput {
+    max-width: 100%;
+  }
+
+  .page {
+    padding: 20px 14px 36px;
+  }
+}

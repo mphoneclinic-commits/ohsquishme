@@ -2,21 +2,13 @@
 
 import Link from 'next/link'
 import { useCart } from '@/components/CartProvider'
+import styles from '@/app/layout.module.css'
 
 export default function HeaderCartLink() {
   const { itemCount } = useCart()
 
   return (
-    <Link
-      href="/cart"
-      style={{
-        textDecoration: 'none',
-        padding: '10px 14px',
-        border: '1px solid #111',
-        borderRadius: 999,
-        fontWeight: 600,
-      }}
-    >
+    <Link href="/cart" className={styles.cartLink}>
       Cart ({itemCount})
     </Link>
   )

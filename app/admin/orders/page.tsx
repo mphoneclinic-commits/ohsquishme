@@ -140,14 +140,7 @@ export default async function AdminOrdersPage({
           <h1 className={styles.title}>Orders Dashboard</h1>
         </div>
 
-        <div className={styles.topActions}>
-
-          <Link href="/shop" className={styles.secondaryLink}>
-            View Store
-          </Link>
-<Link href="/admin/products" className={styles.secondaryLink}>
-  Products
-</Link>
+        <div>
           <AdminLogoutButton />
         </div>
       </div>

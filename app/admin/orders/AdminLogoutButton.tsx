@@ -15,12 +15,12 @@ export default function AdminLogoutButton() {
   }
 
   return (
-    <button
-      type="button"
-      onClick={handleLogout}
-      className={styles.logoutButton}
-    >
-      Sign out
-    </button>
+ <button
+  type="button"
+  onClick={handleLogout}
+  className={styles.logoutButton}
+>
+  Sign out
+</button>
   )
 }

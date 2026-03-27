@@ -1,11 +1,15 @@
 import { redirect } from 'next/navigation'
-import { isAdminFromRequest } from '@/lib/auth'
+import { getAdminAuthState } from '@/lib/auth'
 
 export default async function AdminPage() {
-  const adminUser = await isAdminFromRequest()
+  const auth = await getAdminAuthState()
 
-  if (!adminUser) {
+  if (!auth.isLoggedIn) {
     redirect('/admin/login')
+  }
+
+  if (!auth.isAdmin) {
+    redirect('/')
   }
 
   redirect('/admin/orders')

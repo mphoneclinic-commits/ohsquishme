@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 
-export async function requireAdmin() {
+export async function getAdminAuthState() {
   const supabase = await createClient()
 
   const {
@@ -11,43 +11,54 @@ export async function requireAdmin() {
   } = await supabase.auth.getUser()
 
   if (userError || !user) {
+    return {
+      user: null,
+      isLoggedIn: false,
+      isAdmin: false,
+    }
+  }
+
+  const { data: profile, error: profileError } = await supabaseAdmin
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  if (profileError || !profile) {
+    return {
+      user,
+      isLoggedIn: true,
+      isAdmin: false,
+    }
+  }
+
+  return {
+    user,
+    isLoggedIn: true,
+    isAdmin: profile.role === 'admin',
+  }
+}
+
+export async function requireAdmin() {
+  const auth = await getAdminAuthState()
+
+  if (!auth.isLoggedIn) {
     redirect('/admin/login')
   }
 
-  const { data: profile, error: profileError } = await supabaseAdmin
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-
-  if (profileError || !profile || profile.role !== 'admin') {
-    redirect('/admin/login?error=not_admin')
+  if (!auth.isAdmin) {
+    redirect('/')
   }
 
-  return user
+  return auth.user
 }
 
 export async function isAdminFromRequest() {
-  const supabase = await createClient()
+  const auth = await getAdminAuthState()
 
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser()
-
-  if (userError || !user) {
+  if (!auth.isLoggedIn || !auth.isAdmin) {
     return null
   }
 
-  const { data: profile, error: profileError } = await supabaseAdmin
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-
-  if (profileError || !profile || profile.role !== 'admin') {
-    return null
-  }
-
-  return user
+  return auth.user
 }

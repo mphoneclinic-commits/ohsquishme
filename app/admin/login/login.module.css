@@ -66,3 +66,13 @@
   font-size: 13px;
   color: #b42318;
 }
+
+.errorBox {
+  margin-bottom: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid #f3c2bf;
+  background: #fff4f4;
+  color: #b42318;
+  font-size: 14px;
+}

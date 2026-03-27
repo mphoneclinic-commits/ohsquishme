@@ -1,0 +1,327 @@
+.page {
+  padding: 32px 20px 56px;
+}
+
+.shell {
+  max-width: 960px;
+  margin: 0 auto;
+  display: grid;
+  gap: 20px;
+}
+
+.hero {
+  display: grid;
+  gap: 8px;
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: #7a6f76;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-brand), Arial, sans-serif;
+  font-size: 2.3rem;
+}
+
+.subtitle {
+  margin: 0;
+  color: #665962;
+  line-height: 1.6;
+}
+
+.card {
+  border: 1px solid #eadce3;
+  border-radius: 18px;
+  background: #fff;
+  padding: 20px;
+  box-shadow: 0 4px 14px rgba(30, 18, 24, 0.03);
+}
+
+.modeTabs {
+  display: inline-flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.modeButton {
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid #eadce3;
+  background: #fff;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+
+.modeButtonActive {
+  background: #111;
+  color: #fff;
+  border-color: #111;
+}
+
+.form {
+  display: grid;
+  gap: 12px;
+}
+
+.input {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid #d9ccd3;
+  background: #fff;
+  font: inherit;
+}
+
+.primaryButton {
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px solid #111;
+  background: #111;
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+}
+
+.secondaryButton {
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px solid #d9ccd3;
+  background: #fff;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+
+.successBox {
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid #b7ebcd;
+  background: #ecfdf3;
+  color: #067647;
+  font-size: 14px;
+}
+
+.errorBox {
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid #f3c2bf;
+  background: #fff4f4;
+  color: #b42318;
+  font-size: 14px;
+}
+
+.helpBox {
+  margin-top: 16px;
+  padding: 14px;
+  border-radius: 14px;
+  background: #fff8fb;
+  border: 1px solid #f0dde6;
+}
+
+.helpBox p {
+  margin: 6px 0 0;
+  color: #665962;
+  line-height: 1.6;
+}
+
+.accountStack {
+  display: grid;
+  gap: 18px;
+}
+
+.accountGrid {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: 1fr 1fr;
+}
+
+.sectionEyebrow {
+  margin: 0 0 6px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: #7a6f76;
+}
+
+.sectionTitle {
+  margin: 0 0 14px;
+  font-family: var(--font-brand), Arial, sans-serif;
+  font-size: 1.5rem;
+}
+
+.infoGrid {
+  display: grid;
+  gap: 12px;
+}
+
+.infoCard {
+  border: 1px solid #f0e5ea;
+  border-radius: 14px;
+  padding: 12px 14px;
+  background: #fffdfd;
+  display: grid;
+  gap: 4px;
+}
+
+.infoLabel {
+  font-size: 12px;
+  color: #7a6f76;
+}
+
+.infoValue {
+  word-break: break-word;
+  font-size: 15px;
+}
+
+.actionRow {
+  margin-top: 16px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.statusBadgeApproved,
+.statusBadgePending {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  width: fit-content;
+  margin-bottom: 12px;
+}
+
+.statusBadgeApproved {
+  background: #ecfdf3;
+  color: #067647;
+  border: 1px solid #b7ebcd;
+}
+
+.statusBadgePending {
+  background: #fff8e8;
+  color: #9a6700;
+  border: 1px solid #f5d28b;
+}
+
+.bodyText {
+  margin: 0;
+  color: #665962;
+  line-height: 1.6;
+}
+
+.orderList {
+  display: grid;
+  gap: 14px;
+}
+
+.orderCard {
+  border: 1px solid #f0e5ea;
+  border-radius: 16px;
+  background: #fffdfd;
+  padding: 16px;
+  display: grid;
+  gap: 14px;
+}
+
+.orderHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.orderTitle {
+  margin: 0 0 4px;
+  font-size: 1.1rem;
+}
+
+.orderMeta {
+  margin: 0;
+  color: #7a6f76;
+  font-size: 14px;
+}
+
+.orderHeaderRight {
+  display: grid;
+  gap: 8px;
+  justify-items: end;
+}
+
+.orderStatus {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 11px;
+  border-radius: 999px;
+  border: 1px solid #eadce3;
+  background: #fff8fb;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.orderTotal {
+  font-size: 1rem;
+}
+
+.orderItems {
+  display: grid;
+  gap: 10px;
+}
+
+.orderItemRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 10px;
+  border-top: 1px solid #f3eaee;
+}
+
+.orderItemName {
+  font-weight: 600;
+}
+
+.orderItemMeta {
+  font-size: 13px;
+  color: #7a6f76;
+  margin-top: 3px;
+}
+
+.orderItemTotal {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+@media (max-width: 800px) {
+  .accountGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 700px) {
+  .page {
+    padding: 24px 14px 40px;
+  }
+
+  .title {
+    font-size: 2rem;
+  }
+
+  .orderHeaderRight {
+    justify-items: start;
+  }
+
+  .orderItemRow {
+    flex-direction: column;
+  }
+}

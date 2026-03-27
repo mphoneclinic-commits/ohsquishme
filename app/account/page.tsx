@@ -1,0 +1,101 @@
+import { createClient } from '@/lib/supabase/server'
+import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import AccountAuthCard from './AccountAuthCard'
+import AccountPanel from './AccountPanel'
+import styles from './account.module.css'
+
+export const dynamic = 'force-dynamic'
+
+type ProfileRow = {
+  id: string
+  email: string | null
+  role: string
+  created_at: string | null
+}
+
+type OrderRow = {
+  id: string
+  email: string | null
+  total: number | string | null
+  status: string | null
+  created_at: string | null
+  paid_at: string | null
+}
+
+type OrderItemRow = {
+  id: string
+  order_id: string
+  name: string | null
+  price: number | string | null
+  quantity: number | null
+}
+
+export default async function AccountPage() {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  let profile: ProfileRow | null = null
+  let orders: OrderRow[] = []
+  let orderItems: OrderItemRow[] = []
+
+  if (user) {
+    const { data: profileData } = await supabaseAdmin
+      .from('profiles')
+      .select('id, email, role, created_at')
+      .eq('id', user.id)
+      .single()
+
+    profile = (profileData as ProfileRow | null) ?? null
+
+    if (user.email) {
+      const { data: ordersData } = await supabaseAdmin
+        .from('orders')
+        .select('id, email, total, status, created_at, paid_at')
+        .eq('email', user.email)
+        .order('created_at', { ascending: false })
+
+      orders = (ordersData as OrderRow[] | null) ?? []
+
+      const orderIds = orders.map((order) => order.id)
+
+      if (orderIds.length > 0) {
+        const { data: itemsData } = await supabaseAdmin
+          .from('order_items')
+          .select('id, order_id, name, price, quantity')
+          .in('order_id', orderIds)
+
+        orderItems = (itemsData as OrderItemRow[] | null) ?? []
+      }
+    }
+  }
+
+  return (
+    <main className={styles.page}>
+      <div className={styles.shell}>
+        <section className={styles.hero}>
+          <p className={styles.eyebrow}>Account</p>
+          <h1 className={styles.title}>Your account</h1>
+          <p className={styles.subtitle}>
+            Sign in to manage your account, see your order history, and check
+            whether wholesale pricing is active.
+          </p>
+        </section>
+
+        {user ? (
+          <AccountPanel
+            email={user.email ?? profile?.email ?? ''}
+            role={profile?.role ?? 'customer'}
+            createdAt={profile?.created_at ?? null}
+            orders={orders}
+            orderItems={orderItems}
+          />
+        ) : (
+          <AccountAuthCard />
+        )}
+      </div>
+    </main>
+  )
+}

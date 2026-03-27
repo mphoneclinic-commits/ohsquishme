@@ -19,6 +19,10 @@ export default function AccountAuthCard() {
   const [message, setMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
 
+  const emailRedirectTo = process.env.NEXT_PUBLIC_SITE_URL
+    ? `${process.env.NEXT_PUBLIC_SITE_URL}/account`
+    : undefined
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setSaving(true)
@@ -63,6 +67,9 @@ export default function AccountAuthCard() {
       const { error } = await supabase.auth.signUp({
         email: email.trim(),
         password,
+        options: {
+          emailRedirectTo,
+        },
       })
 
       if (error) {
@@ -72,11 +79,43 @@ export default function AccountAuthCard() {
       }
 
       setMessage(
-        'Account created. If email confirmation is enabled, check your inbox before signing in.'
+        'Account created. Please check your email for the verification link.'
       )
       setMode('sign_in')
       setConfirmPassword('')
       setPassword('')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleResendVerification() {
+    setSaving(true)
+    setMessage('')
+    setErrorMessage('')
+
+    try {
+      if (!email.trim()) {
+        setErrorMessage('Enter your email first')
+        setSaving(false)
+        return
+      }
+
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: email.trim(),
+        options: {
+          emailRedirectTo,
+        },
+      })
+
+      if (error) {
+        setErrorMessage(error.message)
+        setSaving(false)
+        return
+      }
+
+      setMessage('Verification email resent. Check your inbox and spam folder.')
     } finally {
       setSaving(false)
     }
@@ -151,6 +190,15 @@ export default function AccountAuthCard() {
             : mode === 'sign_in'
             ? 'Sign in'
             : 'Create account'}
+        </button>
+
+        <button
+          type="button"
+          onClick={handleResendVerification}
+          disabled={saving}
+          className={styles.secondaryButton}
+        >
+          Resend verification email
         </button>
 
         {message ? <div className={styles.successBox}>{message}</div> : null}

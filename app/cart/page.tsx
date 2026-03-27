@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useState } from 'react'
 import { useCart } from '@/components/CartProvider'
+import styles from './cart.module.css'
 
 export default function CartPage() {
   const {
@@ -17,6 +18,7 @@ export default function CartPage() {
 
 const [checkoutEmail, setCheckoutEmail] = useState('')
 
+const [checkoutPhone, setCheckoutPhone] = useState('')
 
 async function handleCheckout() {
   if (!checkoutEmail.trim()) {
@@ -30,6 +32,7 @@ async function handleCheckout() {
     body: JSON.stringify({
       items,
       email: checkoutEmail.trim(),
+  phone: checkoutPhone.trim(),
     }),
   })
 
@@ -258,20 +261,44 @@ async function handleCheckout() {
             <p style={{ color: '#6f6268', fontSize: 14, lineHeight: 1.6 }}>
               Shipping and payment will be added at checkout.
             </p>
-<input
-  type="email"
-  value={checkoutEmail}
-  onChange={(e) => setCheckoutEmail(e.target.value)}
-  placeholder="Email for order confirmation"
+
+<div
   style={{
-    width: '100%',
-    padding: '12px 14px',
-    borderRadius: 10,
-    border: '1px solid #d8c5ce',
+    display: 'grid',
+    gap: 12,
     marginTop: 12,
-    marginBottom: 12,
   }}
-/>
+>
+  <input
+    type="email"
+    value={checkoutEmail}
+    onChange={(e) => setCheckoutEmail(e.target.value)}
+    placeholder="Email for order confirmation"
+    style={{
+      width: '100%',
+      padding: '12px 14px',
+      borderRadius: 10,
+      border: '1px solid #d8c5ce',
+      background: '#fff',
+      fontSize: 16,
+    }}
+  />
+
+  <input
+    type="tel"
+    value={checkoutPhone}
+    onChange={(e) => setCheckoutPhone(e.target.value)}
+    placeholder="Phone number (e.g. 04xxxxxxx)"
+    style={{
+      width: '100%',
+      padding: '12px 14px',
+      borderRadius: 10,
+      border: '1px solid #d8c5ce',
+      background: '#fff',
+      fontSize: 16,
+    }}
+  />
+</div>
 
    <button
   type="button"

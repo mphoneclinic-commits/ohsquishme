@@ -20,9 +20,10 @@ type ProductRow = {
 export async function POST(req: Request) {
   try {
     const body = await req.json()
-    const { items, email } = body as {
+    const { items, email, phone } = body as {
       items?: CheckoutItem[]
       email?: string
+      phone?: string
     }
 
     if (!items || !Array.isArray(items) || items.length === 0) {
@@ -82,6 +83,20 @@ export async function POST(req: Request) {
       }
     }
 
+if (!email?.trim()) {
+  return NextResponse.json(
+    { error: 'Missing email' },
+    { status: 400 }
+  )
+}
+
+if (!phone?.trim()) {
+  return NextResponse.json(
+    { error: 'Missing phone number' },
+    { status: 400 }
+  )
+}
+
     const total = items.reduce((sum, item) => {
       return sum + Number(item.price) * Number(item.quantity)
     }, 0)
@@ -90,6 +105,7 @@ export async function POST(req: Request) {
       .from('orders')
       .insert({
         email: email.trim(),
+	phone: phone?.trim() || null,
         total,
         status: 'pending',
       })

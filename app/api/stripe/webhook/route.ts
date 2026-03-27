@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { stripe } from '@/lib/stripe'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { sendOrderSMS } from '@/lib/sms/sendOrderSMS'
 
 export async function POST(req: Request) {
   const signature = req.headers.get('stripe-signature')
@@ -61,22 +62,56 @@ export async function POST(req: Request) {
           )
         }
 
-        if (data?.ok === false) {
-          console.error('process_paid_order returned failure:', data)
+if (data?.ok === false) {
+  console.error('process_paid_order returned failure:', data)
 
-          await supabaseAdmin
-            .from('orders')
-            .update({
-              status: 'stock_issue',
-              stripe_session_id: sessionId,
-            })
-            .eq('id', orderId)
+  await supabaseAdmin
+    .from('orders')
+    .update({
+      status: 'stock_issue',
+      stripe_session_id: sessionId,
+    })
+    .eq('id', orderId)
 
-          return NextResponse.json(
-            { error: data.reason || 'Stock processing failed' },
-            { status: 409 }
-          )
-        }
+  return NextResponse.json(
+    { error: data.reason || 'Stock processing failed' },
+    { status: 409 }
+  )
+}
+
+// ✅ LOAD ORDER (this is what you're missing)
+const { data: order, error: orderError } = await supabaseAdmin
+  .from('orders')
+  .select('id, phone, sms_sent_at')
+  .eq('id', orderId)
+  .single()
+
+if (orderError || !order) {
+  console.error('Failed to load order for SMS:', orderError)
+  break
+}
+
+// ✅ SEND SMS (only once)
+if (order.phone && !order.sms_sent_at) {
+  try {
+    await sendOrderSMS({
+      phone: order.phone,
+      orderId: order.id,
+    })
+
+    await supabaseAdmin
+      .from('orders')
+      .update({
+        sms_sent_at: new Date().toISOString(),
+      })
+      .eq('id', orderId)
+
+  } catch (smsError) {
+    console.error('SMS failed:', smsError)
+  }
+}
+
+break
 
         break
       }

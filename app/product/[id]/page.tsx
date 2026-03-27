@@ -147,21 +147,39 @@ export default function ProductPage() {
             <strong>Stock:</strong> {product.stock}
           </p>
 
-          <button
-            type="button"
-            onClick={handleAddToCart}
-            style={{
-              marginTop: 16,
-              padding: '14px 18px',
-              borderRadius: 10,
-              border: '1px solid #111',
-              background: '#111',
-              color: '#fff',
-              cursor: 'pointer',
-            }}
-          >
-            {added ? 'Added' : 'Add to Cart'}
-          </button>
+          {product.stock > 0 ? (
+  <button
+    type="button"
+    onClick={handleAddToCart}
+    style={{
+      marginTop: 16,
+      padding: '14px 18px',
+      borderRadius: 10,
+      border: '1px solid #111',
+      background: '#111',
+      color: '#fff',
+      cursor: 'pointer',
+    }}
+  >
+    {added ? 'Added' : 'Add to Cart'}
+  </button>
+) : (
+  <button
+    type="button"
+    disabled
+    style={{
+      marginTop: 16,
+      padding: '14px 18px',
+      borderRadius: 10,
+      border: '1px solid #ccc',
+      background: '#eee',
+      color: '#777',
+      cursor: 'not-allowed',
+    }}
+  >
+    Out of Stock
+  </button>
+)}
         </div>
       </div>
     </main>

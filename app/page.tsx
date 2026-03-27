@@ -68,6 +68,20 @@ export default function HomePage() {
           >
             Wholesale / Account
           </Link>
+
+
+	<Link 
+href="/admin/orders"
+           style={{
+              padding: '12px 18px',
+              borderRadius: 10,
+              border: '1px solid #111',
+              textDecoration: 'none',
+            }}
+          >
+            Admin
+          </Link>
+
         </div>
       </section>
     </main>

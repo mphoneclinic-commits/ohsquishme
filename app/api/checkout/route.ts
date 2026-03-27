@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
 import { stripe } from '@/lib/stripe'
+import { supabaseAdmin } from '@/lib/supabaseAdmin'
 
 type CheckoutItem = {
   id: string
@@ -8,6 +8,13 @@ type CheckoutItem = {
   price: number
   quantity: number
   image_url?: string | null
+}
+
+type ProductRow = {
+  id: string
+  name: string
+  stock: number
+  active: boolean
 }
 
 export async function POST(req: Request) {
@@ -29,11 +36,57 @@ export async function POST(req: Request) {
       )
     }
 
+    const productIds = items.map((item) => item.id)
+
+    const { data: products, error: productsError } = await supabaseAdmin
+      .from('products')
+      .select('id, name, stock, active')
+      .in('id', productIds)
+
+    if (productsError) {
+      console.error('Product lookup error:', productsError)
+      return NextResponse.json(
+        { error: productsError.message },
+        { status: 500 }
+      )
+    }
+
+    const productMap = new Map(
+      (products || []).map((p: ProductRow) => [p.id, p])
+    )
+
+    for (const item of items) {
+      const dbProduct = productMap.get(item.id)
+
+      if (!dbProduct) {
+        return NextResponse.json(
+          { error: `Product not found: ${item.name}` },
+          { status: 400 }
+        )
+      }
+
+      if (!dbProduct.active) {
+        return NextResponse.json(
+          { error: `${dbProduct.name} is no longer available` },
+          { status: 400 }
+        )
+      }
+
+      if (Number(dbProduct.stock) < Number(item.quantity)) {
+        return NextResponse.json(
+          {
+            error: `Not enough stock for ${dbProduct.name}. Available: ${dbProduct.stock}`,
+          },
+          { status: 400 }
+        )
+      }
+    }
+
     const total = items.reduce((sum, item) => {
       return sum + Number(item.price) * Number(item.quantity)
     }, 0)
 
-    const { data: order, error: orderError } = await supabase
+    const { data: order, error: orderError } = await supabaseAdmin
       .from('orders')
       .insert({
         email: email.trim(),
@@ -59,7 +112,7 @@ export async function POST(req: Request) {
       quantity: Number(item.quantity),
     }))
 
-    const { error: itemsError } = await supabase
+    const { error: itemsError } = await supabaseAdmin
       .from('order_items')
       .insert(orderItems)
 
@@ -93,7 +146,7 @@ export async function POST(req: Request) {
       },
     })
 
-    const { error: updateOrderError } = await supabase
+    const { error: updateOrderError } = await supabaseAdmin
       .from('orders')
       .update({
         status: 'awaiting_payment',

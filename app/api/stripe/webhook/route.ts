@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { stripe } from '@/lib/stripe'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabaseAdmin'
 
 export async function POST(req: Request) {
   const signature = req.headers.get('stripe-signature')
@@ -26,11 +26,9 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.text()
-
     event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
   } catch (error) {
     console.error('Webhook signature verification failed:', error)
-
     return NextResponse.json(
       { error: 'Invalid webhook signature' },
       { status: 400 }
@@ -39,60 +37,44 @@ export async function POST(req: Request) {
 
   try {
     switch (event.type) {
-      case 'checkout.session.completed': {
+      case 'checkout.session.completed':
+      case 'checkout.session.async_payment_succeeded': {
         const session = event.data.object as Stripe.Checkout.Session
         const orderId = session.metadata?.order_id
         const sessionId = session.id
 
         if (!orderId) {
-          console.error('checkout.session.completed missing metadata.order_id')
+          console.error('Missing metadata.order_id in Stripe session')
           break
         }
 
-        const { error } = await supabase
-          .from('orders')
-          .update({
-            status: 'paid',
-            paid_at: new Date().toISOString(),
-            stripe_session_id: sessionId,
-          })
-          .eq('id', orderId)
+        const { data, error } = await supabaseAdmin.rpc('process_paid_order', {
+          target_order_id: orderId,
+          target_session_id: sessionId,
+        })
 
         if (error) {
-          console.error('Failed to mark order paid:', error)
+          console.error('process_paid_order RPC error:', error)
           return NextResponse.json(
             { error: error.message },
             { status: 500 }
           )
         }
 
-        break
-      }
+        if (data?.ok === false) {
+          console.error('process_paid_order returned failure:', data)
 
-      case 'checkout.session.async_payment_succeeded': {
-        const session = event.data.object as Stripe.Checkout.Session
-        const orderId = session.metadata?.order_id
+          await supabaseAdmin
+            .from('orders')
+            .update({
+              status: 'stock_issue',
+              stripe_session_id: sessionId,
+            })
+            .eq('id', orderId)
 
-        if (!orderId) {
-          console.error(
-            'checkout.session.async_payment_succeeded missing metadata.order_id'
-          )
-          break
-        }
-
-        const { error } = await supabase
-          .from('orders')
-          .update({
-            status: 'paid',
-            paid_at: new Date().toISOString(),
-          })
-          .eq('id', orderId)
-
-        if (error) {
-          console.error('Failed to mark async payment paid:', error)
           return NextResponse.json(
-            { error: error.message },
-            { status: 500 }
+            { error: data.reason || 'Stock processing failed' },
+            { status: 409 }
           )
         }
 
@@ -104,13 +86,11 @@ export async function POST(req: Request) {
         const orderId = session.metadata?.order_id
 
         if (!orderId) {
-          console.error(
-            'checkout.session.async_payment_failed missing metadata.order_id'
-          )
+          console.error('Missing metadata.order_id in async failure event')
           break
         }
 
-        const { error } = await supabase
+        const { error } = await supabaseAdmin
           .from('orders')
           .update({
             status: 'payment_failed',
@@ -118,7 +98,7 @@ export async function POST(req: Request) {
           .eq('id', orderId)
 
         if (error) {
-          console.error('Failed to mark async payment failed:', error)
+          console.error('Failed to mark payment_failed:', error)
           return NextResponse.json(
             { error: error.message },
             { status: 500 }

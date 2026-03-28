@@ -54,6 +54,19 @@
   gap: 18px;
 }
 
+.listToolbar {
+  display: grid;
+  gap: 10px;
+}
+
+.emptyCard {
+  border: 1px solid #eadce3;
+  border-radius: 16px;
+  background: #fff;
+  padding: 16px;
+  box-shadow: 0 4px 14px rgba(30, 18, 24, 0.03);
+  color: #5d5158;
+}
 .createCard,
 .productCard,
 .errorCard {
@@ -123,7 +136,30 @@
   display: grid;
   gap: 12px;
 }
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
 
+.summaryCard {
+  border: 1px solid #eadce3;
+  border-radius: 16px;
+  background: #fff;
+  padding: 16px;
+  box-shadow: 0 4px 14px rgba(30, 18, 24, 0.03);
+}
+
+.summaryLabel {
+  font-size: 12px;
+  color: #7a6f76;
+  margin-bottom: 6px;
+}
+
+.summaryValue {
+  font-size: 1.8rem;
+  font-weight: 700;
+}
 .productCardTop {
   display: grid;
   grid-template-columns: 120px minmax(0, 1fr);

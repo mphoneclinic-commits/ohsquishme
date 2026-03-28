@@ -17,6 +17,10 @@
   flex-wrap: wrap;
   align-items: center;
 }
+.tabSecondary {
+  background: #fff;
+  color: #5f4d55;
+}
 
 .tab {
   text-decoration: none;

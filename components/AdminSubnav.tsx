@@ -20,7 +20,8 @@ export default function AdminSubnav({
     pathname === '/admin/wholesale' || pathname.startsWith('/admin/wholesale/')
   const isCustomers =
     pathname === '/admin/customers' || pathname.startsWith('/admin/customers/')
-
+const isStorefront =
+  pathname === '/admin/storefront' || pathname.startsWith('/admin/storefront/')
   return (
     <nav className={styles.wrap}>
       <div className={styles.inner}>
@@ -63,10 +64,13 @@ export default function AdminSubnav({
           </Link>
         </div>
 
-        <div className={styles.actions}>
-          <Link href="/shop" className={styles.tab}>
-            View Store
-          </Link>
+        <div className={styles.tabs}>
+<Link
+  href="/admin/storefront"
+  className={`${styles.tab} ${isStorefront ? styles.tabActive : ''}`}
+>
+  View Store
+</Link>
           <AdminLogoutButton className={styles.tab} />
         </div>
       </div>

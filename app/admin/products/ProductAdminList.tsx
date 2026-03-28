@@ -80,10 +80,52 @@ export default function ProductAdminList({
   )
 
   const [products, setProducts] = useState<ProductRow[]>(safeInitialProducts)
+  const [query, setQuery] = useState('')
   const [createForm, setCreateForm] = useState<ProductFormState>(emptyForm)
   const [createImage, setCreateImage] = useState<File | null>(null)
   const [createMessage, setCreateMessage] = useState('')
   const [creating, setCreating] = useState(false)
+
+  const filteredProducts = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return products
+
+    return products.filter((product) =>
+      [
+        product.name || '',
+        product.description || '',
+        product.image_url || '',
+        String(product.price_retail || ''),
+        String(product.price_wholesale || ''),
+        String(product.stock || ''),
+        product.active ? 'active' : 'inactive',
+      ]
+        .join(' ')
+        .toLowerCase()
+        .includes(q)
+    )
+  }, [products, query])
+
+  const stats = useMemo(() => {
+    const total = products.length
+    const active = products.filter((product) => !!product.active).length
+    const inactive = products.filter((product) => !product.active).length
+    const lowStock = products.filter((product) => {
+      const stock = Number(product.stock || 0)
+      return stock > 0 && stock <= 5
+    }).length
+    const outOfStock = products.filter(
+      (product) => Number(product.stock || 0) <= 0
+    ).length
+
+    return {
+      total,
+      active,
+      inactive,
+      lowStock,
+      outOfStock,
+    }
+  }, [products])
 
   async function uploadImage(file: File) {
     const formData = new FormData()
@@ -206,6 +248,14 @@ export default function ProductAdminList({
 
   return (
     <div className={styles.layout}>
+      <section className={styles.summaryGrid}>
+        <SummaryCard label="Total Products" value={stats.total} />
+        <SummaryCard label="Active" value={stats.active} />
+        <SummaryCard label="Inactive" value={stats.inactive} />
+        <SummaryCard label="Low Stock" value={stats.lowStock} />
+        <SummaryCard label="Out of Stock" value={stats.outOfStock} />
+      </section>
+
       <section className={styles.createCard}>
         <div className={styles.sectionHeader}>
           <div>
@@ -301,24 +351,25 @@ export default function ProductAdminList({
               className={styles.input}
             />
 
-           <label className={styles.filePicker}>
-  <input
-    type="file"
-    accept="image/*"
-    onChange={(e) => {
-      const file = e.target.files?.[0] ?? null
-      setCreateImage(file)
-    }}
-    className={styles.hiddenFileInput}
-  />
-  <span className={styles.filePickerButton}>Choose image</span>
-  <span className={styles.filePickerText}>
-    {createImage ? createImage.name : 'No file selected'}
-{createImage ? (
-  <div className={styles.message}>Selected: {createImage.name}</div>
-) : null}
-  </span>
-</label>
+            <label className={styles.filePicker}>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0] ?? null
+                  setCreateImage(file)
+                }}
+                className={styles.hiddenFileInput}
+              />
+              <span className={styles.filePickerButton}>Choose image</span>
+              <span className={styles.filePickerText}>
+                {createImage ? createImage.name : 'No file selected'}
+              </span>
+            </label>
+
+            {createImage ? (
+              <div className={styles.message}>Selected: {createImage.name}</div>
+            ) : null}
 
             <label className={styles.checkboxLabel}>
               <input
@@ -360,17 +411,46 @@ export default function ProductAdminList({
           </div>
         </div>
 
+        <div className={styles.listToolbar}>
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search name, description, stock, price..."
+            className={styles.input}
+          />
+        </div>
+
         <div className={styles.productList}>
-          {products.map((product) => (
-            <EditableProductCard
-              key={product.id}
-              product={product}
-              onSave={handleUpdateProduct}
-              onDelete={handleDeleteProduct}
-            />
-          ))}
+          {filteredProducts.length === 0 ? (
+            <div className={styles.emptyCard}>No matching products found.</div>
+          ) : (
+            filteredProducts.map((product) => (
+              <EditableProductCard
+                key={product.id}
+                product={product}
+                onSave={handleUpdateProduct}
+                onDelete={handleDeleteProduct}
+              />
+            ))
+          )}
         </div>
       </section>
+    </div>
+  )
+}
+
+function SummaryCard({
+  label,
+  value,
+}: {
+  label: string
+  value: number
+}) {
+  return (
+    <div className={styles.summaryCard}>
+      <div className={styles.summaryLabel}>{label}</div>
+      <div className={styles.summaryValue}>{value}</div>
     </div>
   )
 }
@@ -578,8 +658,8 @@ function EditableProductCard({
       />
     </article>
   )
-
 }
+
 function StockAdjuster({
   productId,
   currentStock,

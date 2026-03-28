@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { sendWholesaleRequestAlerts } from '@/lib/notifications/sendWholesaleRequestAlerts'
 
 export async function POST(req: Request) {
   try {
@@ -61,6 +62,19 @@ export async function POST(req: Request) {
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    try {
+      await sendWholesaleRequestAlerts({
+        email: user.email ?? '',
+        businessName,
+        contactName: contactName || null,
+        phone: phone || null,
+        website: website || null,
+        notes: notes || null,
+      })
+    } catch (alertError) {
+      console.error('Wholesale request alerts failed:', alertError)
     }
 
     return NextResponse.json({ request: data })

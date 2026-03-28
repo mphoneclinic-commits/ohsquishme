@@ -11,6 +11,7 @@ export default function AdminSubnav() {
   const isOrders = pathname === '/admin/orders'
   const isProducts = pathname === '/admin/products'
   const isWholesale = pathname === '/admin/wholesale'
+  const isWholesaleAccounts = pathname === '/admin/wholesale-accounts'
 
   return (
     <div className={styles.wrap}>
@@ -34,7 +35,14 @@ export default function AdminSubnav() {
             href="/admin/wholesale"
             className={`${styles.tab} ${isWholesale ? styles.tabActive : ''}`}
           >
-            Wholesale
+            Requests
+          </Link>
+
+          <Link
+            href="/admin/wholesale-accounts"
+            className={`${styles.tab} ${isWholesaleAccounts ? styles.tabActive : ''}`}
+          >
+            Wholesale Accounts
           </Link>
         </div>
 

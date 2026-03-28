@@ -31,9 +31,9 @@
 }
 
 .logoWrap {
-  width: 68px;
-  height: 68px;
-  border-radius: 18px;
+  width: 100px;
+  height: 100px;
+  border-radius: 25px;
   background: #fff;
   border: 1px solid #f1dce5;
   display: flex;
@@ -46,8 +46,8 @@
 }
 
 .logo {
-  width: 68px;
-  height: 68px;
+  width: 500px;
+  height: 500px;
   object-fit: contain;
   border-radius: 12px;
 }
@@ -60,7 +60,7 @@
 
 .brandTitle {
   font-family: var(--font-brand), Arial, sans-serif;
-  font-size: 1.25rem;
+  font-size: 2.0rem;
   font-weight: 700;
   letter-spacing: -0.02em;
   line-height: 1.05;
@@ -167,7 +167,7 @@
   }
 
   .brandTitle {
-    font-size: 1.05rem;
+    font-size: 1.65rem;
   }
 
   .brandSub {
@@ -175,13 +175,13 @@
   }
 
   .logoWrap {
-    width: 56px;
-    height: 56px;
+    width: 80px;
+    height: 80px;
   }
 
   .logo {
-    width: 54px;
-    height: 54px;
+    width: 200px;
+    height: 200px;
   }
 
   .nav {

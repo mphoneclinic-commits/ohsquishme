@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { isAdminFromRequest } from '@/lib/auth'
+import { supabaseAdmin } from '@/lib/supabaseAdmin'
 
 export async function PATCH(
   req: Request,
@@ -16,69 +16,62 @@ export async function PATCH(
     const { id } = await params
     const body = await req.json()
 
-    const updates = {
-      name: String(body?.name || '').trim(),
-      description: String(body?.description || '').trim() || null,
-      price_retail: Number(body?.price_retail || 0),
-      price_wholesale: Number(body?.price_wholesale || 0),
-      stock: Number(body?.stock || 0),
-      image_url: body?.image_url ? String(body.image_url).trim() : null,
-      active: Boolean(body?.active),
+    const delta = Number(body?.delta || 0)
+    const reason = String(body?.reason || '').trim()
+
+    if (!id) {
+      return NextResponse.json({ error: 'Missing product id' }, { status: 400 })
     }
 
-    if (!updates.name) {
-      return NextResponse.json({ error: 'Name is required' }, { status: 400 })
+    if (!Number.isInteger(delta) || delta === 0) {
+      return NextResponse.json({ error: 'Delta must be a non-zero integer' }, { status: 400 })
     }
 
-    const { data, error } = await supabaseAdmin
+    const { data: product, error: productError } = await supabaseAdmin
       .from('products')
-      .update(updates)
+      .select('id, stock')
       .eq('id', id)
-      .select('*')
       .single()
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+    if (productError || !product) {
+      return NextResponse.json({ error: productError?.message || 'Product not found' }, { status: 404 })
     }
 
-    return NextResponse.json({ product: data })
-  } catch (error) {
-    console.error('Update product error:', error)
-    return NextResponse.json(
-      { error: 'Unexpected server error' },
-      { status: 500 }
-    )
-  }
-}
+    const currentStock = Number(product.stock || 0)
+    const nextStock = currentStock + delta
 
-export async function DELETE(
-  _req: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const adminUser = await isAdminFromRequest()
-
-    if (!adminUser) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (nextStock < 0) {
+      return NextResponse.json({ error: 'Stock cannot go below zero' }, { status: 400 })
     }
 
-    const { id } = await params
-
-    const { error } = await supabaseAdmin
+    const { error: updateError } = await supabaseAdmin
       .from('products')
-      .delete()
+      .update({
+        stock: nextStock,
+        updated_at: new Date().toISOString(),
+      })
       .eq('id', id)
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+    if (updateError) {
+      return NextResponse.json({ error: updateError.message }, { status: 500 })
     }
 
-    return NextResponse.json({ success: true })
+    const { error: logError } = await supabaseAdmin
+      .from('stock_adjustments')
+      .insert({
+        product_id: id,
+        admin_user_id: adminUser.id,
+        delta,
+        reason: reason || null,
+      })
+
+    if (logError) {
+      return NextResponse.json({ error: logError.message }, { status: 500 })
+    }
+
+    return NextResponse.json({ success: true, stock: nextStock })
   } catch (error) {
-    console.error('Delete product error:', error)
-    return NextResponse.json(
-      { error: 'Unexpected server error' },
-      { status: 500 }
-    )
+    console.error('Stock adjustment error:', error)
+    return NextResponse.json({ error: 'Unexpected server error' }, { status: 500 })
   }
 }

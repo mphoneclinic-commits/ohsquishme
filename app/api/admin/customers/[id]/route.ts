@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { isAdminFromRequest } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 
+const ALLOWED_ROLES = new Set(['customer', 'wholesale', 'admin'])
+
 export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -16,17 +18,15 @@ export async function PATCH(
     const { id } = await params
     const body = await req.json()
 
-    const status = String(body?.status || '').trim()
+    const role = String(body?.role || '').trim()
 
-    if (!status) {
-      return NextResponse.json({ error: 'Missing status' }, { status: 400 })
+    if (!ALLOWED_ROLES.has(role)) {
+      return NextResponse.json({ error: 'Invalid role' }, { status: 400 })
     }
 
     const { error } = await supabaseAdmin
-      .from('orders')
-      .update({
-        status,
-      })
+      .from('profiles')
+      .update({ role })
       .eq('id', id)
 
     if (error) {
@@ -35,7 +35,7 @@ export async function PATCH(
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Admin order status update error:', error)
+    console.error('Customer role update error:', error)
     return NextResponse.json(
       { error: 'Unexpected server error' },
       { status: 500 }

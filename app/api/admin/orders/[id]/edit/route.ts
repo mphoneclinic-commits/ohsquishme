@@ -1,6 +1,18 @@
 import { NextResponse } from 'next/server'
-import { isAdminFromRequest } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { isAdminFromRequest } from '@/lib/auth'
+
+const ALLOWED_STATUSES = new Set([
+  'pending',
+  'awaiting_payment',
+  'paid',
+  'payment_failed',
+  'stock_issue',
+  'packed',
+  'shipped',
+  'completed',
+  'cancelled',
+])
 
 export async function PATCH(
   req: Request,
@@ -15,18 +27,19 @@ export async function PATCH(
 
     const { id } = await params
     const body = await req.json()
-
     const status = String(body?.status || '').trim()
 
-    if (!status) {
-      return NextResponse.json({ error: 'Missing status' }, { status: 400 })
+    if (!id) {
+      return NextResponse.json({ error: 'Missing order id' }, { status: 400 })
+    }
+
+    if (!ALLOWED_STATUSES.has(status)) {
+      return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
     }
 
     const { error } = await supabaseAdmin
       .from('orders')
-      .update({
-        status,
-      })
+      .update({ status })
       .eq('id', id)
 
     if (error) {

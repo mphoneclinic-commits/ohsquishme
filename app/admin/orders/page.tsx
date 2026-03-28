@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdmin } from '@/lib/auth'
 import OrderStatusForm from './OrderStatusForm'
@@ -72,7 +73,16 @@ export default async function AdminOrdersPage({
     .order('created_at', { ascending: false })
 
   if (ordersError) {
-    throw new Error(`Failed to load orders: ${ordersError.message}`)
+    return (
+      <main className={styles.page}>
+        <div className={styles.shell}>
+          <AdminSubnav />
+          <div className={styles.emptyCard}>
+            Failed to load orders: {ordersError.message}
+          </div>
+        </div>
+      </main>
+    )
   }
 
   const orders = (ordersData || []) as OrderRow[]
@@ -87,7 +97,16 @@ export default async function AdminOrdersPage({
       .in('order_id', orderIds)
 
     if (itemsError) {
-      throw new Error(`Failed to load order items: ${itemsError.message}`)
+      return (
+        <main className={styles.page}>
+          <div className={styles.shell}>
+            <AdminSubnav />
+            <div className={styles.emptyCard}>
+              Failed to load order items: {itemsError.message}
+            </div>
+          </div>
+        </main>
+      )
     }
 
     items = (itemsData || []) as OrderItemRow[]
@@ -215,6 +234,15 @@ export default async function AdminOrdersPage({
                           label="Stripe Session"
                           value={order.stripe_session_id || '—'}
                         />
+                      </div>
+
+                      <div className={styles.orderActions}>
+                        <Link
+                          href={`/admin/orders/${order.id}`}
+                          className={styles.secondaryLink}
+                        >
+                          Edit order
+                        </Link>
                       </div>
                     </div>
 

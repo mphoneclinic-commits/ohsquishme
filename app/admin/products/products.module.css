@@ -409,6 +409,23 @@
   box-shadow: 0 2px 8px rgba(30, 18, 24, 0.04);
 }
 
+.stockAdjustBox {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #f1e7eb;
+}
+
+.stockAdjustGrid {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr) auto;
+  gap: 10px;
+}
+
+@media (max-width: 760px) {
+  .stockAdjustGrid {
+    grid-template-columns: 1fr;
+  }
+}
 
 @media (max-width: 980px) {
   .createGrid {

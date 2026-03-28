@@ -64,19 +64,29 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    try {
-      await sendWholesaleRequestAlerts({
-        email: user.email ?? '',
-        businessName,
-        contactName: contactName || null,
-        phone: phone || null,
-        website: website || null,
-        notes: notes || null,
-      })
-    } catch (alertError) {
-      console.error('Wholesale request alerts failed:', alertError)
-    }
+try {
+  await sendWholesaleRequestAlerts({
+    email: user.email ?? '',
+    businessName,
+    contactName: contactName || null,
+    phone: phone || null,
+    website: website || null,
+    notes: notes || null,
+  })
+} catch (alertError) {
+  console.error('Wholesale request alerts failed:', alertError)
 
+  return NextResponse.json(
+    {
+      error:
+        alertError instanceof Error
+          ? alertError.message
+          : 'Wholesale request was saved but SMS alert failed',
+    },
+    { status: 500 }
+  )
+}
+   
     return NextResponse.json({ request: data })
   } catch (error) {
     console.error('Wholesale request error:', error)

@@ -1,0 +1,154 @@
+.page {
+  padding: 32px 20px 56px;
+}
+
+.shell {
+  max-width: 1120px;
+  margin: 0 auto;
+  display: grid;
+  gap: 18px;
+}
+
+.layout {
+  display: grid;
+  gap: 18px;
+}
+
+.topRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.eyebrow {
+  margin: 0 0 6px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: #7a6f76;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-brand), Arial, sans-serif;
+  font-size: 2rem;
+}
+
+.card,
+.errorCard {
+  border: 1px solid #eadce3;
+  border-radius: 16px;
+  background: #fff;
+  padding: 16px;
+  box-shadow: 0 4px 14px rgba(30, 18, 24, 0.03);
+}
+
+.errorCard {
+  color: #b42318;
+}
+
+.sectionTitle {
+  margin: 0 0 14px;
+  font-size: 1.05rem;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.input,
+.textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid #d9ccd3;
+  background: #fff;
+  font: inherit;
+}
+
+.textarea {
+  min-height: 110px;
+  resize: vertical;
+}
+
+.actionRow {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
+.primaryButton,
+.warningButton,
+.dangerButton,
+.secondaryLink {
+  padding: 10px 14px;
+  border-radius: 12px;
+  font: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.primaryButton {
+  border: 1px solid #111;
+  background: #111;
+  color: #fff;
+}
+
+.warningButton {
+  border: 1px solid #f0c36d;
+  background: #fff8e8;
+  color: #9a6700;
+}
+
+.dangerButton {
+  border: 1px solid #d66b7b;
+  background: #fff4f4;
+  color: #b42318;
+}
+
+.secondaryLink {
+  border: 1px solid #d9ccd3;
+  background: #fff;
+  color: inherit;
+}
+
+.message {
+  margin-top: 12px;
+  font-size: 14px;
+  color: #067647;
+}
+
+.itemList {
+  display: grid;
+  gap: 10px;
+}
+
+.itemRow,
+.totalRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 100px 100px 120px;
+  gap: 10px;
+  align-items: center;
+}
+
+.totalRow {
+  padding-top: 10px;
+  border-top: 1px solid #f0e5ea;
+}
+
+@media (max-width: 800px) {
+  .formGrid,
+  .itemRow,
+  .totalRow {
+    grid-template-columns: 1fr;
+  }
+
+  .page {
+    padding: 24px 14px 40px;
+  }
+}

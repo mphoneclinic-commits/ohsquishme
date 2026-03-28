@@ -565,6 +565,95 @@ function EditableProductCard({
           Delete
         </button>
       </div>
+
+      <StockAdjuster
+        productId={product.id}
+        currentStock={Number(form.stock || 0)}
+        onAdjusted={(nextStock) =>
+          setForm((current) => ({
+            ...current,
+            stock: String(nextStock),
+          }))
+        }
+      />
     </article>
+  )
+
+}
+function StockAdjuster({
+  productId,
+  currentStock,
+  onAdjusted,
+}: {
+  productId: string
+  currentStock: number
+  onAdjusted: (nextStock: number) => void
+}) {
+  const [delta, setDelta] = useState('')
+  const [reason, setReason] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  async function handleAdjust() {
+    const parsed = Number(delta)
+
+    if (!Number.isInteger(parsed) || parsed === 0) {
+      alert('Enter a non-zero whole number')
+      return
+    }
+
+    setSaving(true)
+
+    try {
+      const res = await fetch(`/api/admin/products/${productId}/stock`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          delta: parsed,
+          reason,
+        }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        alert(data.error || 'Failed to adjust stock')
+        return
+      }
+
+      onAdjusted(Number(data.stock || currentStock))
+      setDelta('')
+      setReason('')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className={styles.stockAdjustBox}>
+      <div className={styles.stockAdjustGrid}>
+        <input
+          type="number"
+          value={delta}
+          onChange={(e) => setDelta(e.target.value)}
+          placeholder="Stock delta (+5 / -2)"
+          className={styles.input}
+        />
+        <input
+          type="text"
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          placeholder="Reason (damage, manual sale, restock)"
+          className={styles.input}
+        />
+        <button
+          type="button"
+          onClick={handleAdjust}
+          disabled={saving}
+          className={styles.primaryButton}
+        >
+          {saving ? 'Updating...' : 'Adjust Stock'}
+        </button>
+      </div>
+    </div>
   )
 }

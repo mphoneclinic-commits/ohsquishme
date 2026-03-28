@@ -8,7 +8,12 @@
   display: grid;
   gap: 18px;
 }
-
+.orderActions {
+  margin-top: 12px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
 .topBar {
   display: flex;
   justify-content: space-between;

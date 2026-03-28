@@ -1,30 +1,48 @@
+
 .page {
-  min-height: 100vh;
-  display: grid;
-  place-items: center;
-  padding: 24px;
+  max-width: 540px;
+  margin: 0 auto;
+  padding: 48px 24px;
 }
 
-.card {
-  width: 100%;
-  max-width: 420px;
-  border: 1px solid #eadce3;
-  border-radius: 18px;
-  background: #fff;
-  padding: 24px;
+.shell {
+  max-width: 960px;
+  margin: auto;
+  display: grid;
+  gap: 20px;
+}
+
+.hero {
+  display: grid;
+  gap: 8px;
 }
 
 .eyebrow {
-  margin: 0 0 8px;
-  font-size: 13px;
+  margin: 0;
+  font-size: 12px;
   text-transform: uppercase;
-  letter-spacing: 1.4px;
+  letter-spacing: 1.2px;
   color: #7a6f76;
 }
 
 .title {
-  margin-top: 0;
-  margin-bottom: 10px;
+  margin: 0;
+  font-family: var(--font-brand), Arial, sans-serif;
+  font-size: 1.75rem;
+}
+
+.subtitle {
+  margin: 0;
+  color: #665962;
+  line-height: 1.6;
+}
+
+.card {
+  border: 1px solid #eadce3;
+  border-radius: 18px;
+  background: #fff;
+  padding: 20px;
+  box-shadow: 0 4px 14px rgba(30, 18, 24, 0.03);
 }
 
 .description {

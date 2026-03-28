@@ -293,4 +293,10 @@
   .lineItem {
     grid-template-columns: 1fr;
   }
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 2fr));
+  gap: 14px;
+  margin-bottom: 22px;
+}
 }

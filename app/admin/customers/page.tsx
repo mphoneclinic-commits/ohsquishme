@@ -1,6 +1,6 @@
 import { requireAdmin } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
-import AdminSubnav from '@/components/AdminSubnav'
+
 import CustomerAdminList from './CustomerAdminList'
 import styles from './customers.module.css'
 
@@ -25,7 +25,7 @@ export default async function AdminCustomersPage() {
     return (
       <main className={styles.page}>
         <div className={styles.shell}>
-          <AdminSubnav />
+          
           <div className={styles.errorCard}>
             Failed to load customers: {error.message}
           </div>
@@ -37,7 +37,7 @@ export default async function AdminCustomersPage() {
   return (
     <main className={styles.page}>
       <div className={styles.shell}>
-        <AdminSubnav />
+     
         <CustomerAdminList initialCustomers={(data || []) as ProfileRow[]} />
       </div>
     </main>

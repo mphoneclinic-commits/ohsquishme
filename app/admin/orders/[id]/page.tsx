@@ -1,6 +1,5 @@
 import { requireAdmin } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
-import AdminSubnav from '@/components/AdminSubnav'
 import OrderEditor from './OrderEditor'
 import styles from './order-edit.module.css'
 
@@ -52,7 +51,7 @@ export default async function AdminOrderEditPage({
     return (
       <main className={styles.page}>
         <div className={styles.shell}>
-          <AdminSubnav />
+          
           <div className={styles.errorCard}>{orderError?.message || 'Order not found'}</div>
         </div>
       </main>
@@ -67,7 +66,7 @@ export default async function AdminOrderEditPage({
   return (
     <main className={styles.page}>
       <div className={styles.shell}>
-        <AdminSubnav />
+        
         <OrderEditor
           order={order as OrderRow}
           items={(items || []) as OrderItemRow[]}

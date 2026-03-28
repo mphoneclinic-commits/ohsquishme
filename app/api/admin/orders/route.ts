@@ -2,10 +2,7 @@ import { NextResponse } from 'next/server'
 import { isAdminFromRequest } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 
-export async function PATCH(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET() {
   try {
     const adminUser = await isAdminFromRequest()
 
@@ -13,27 +10,20 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id } = await params
-    const body = await req.json()
-
-    const status = String(body?.status || '').trim()
-
-    if (!status) {
-      return NextResponse.json({ error: 'Missing status' }, { status: 400 })
-    }
-
-    const { error } = await supabaseAdmin
+    const { data, error } = await supabaseAdmin
       .from('orders')
-      .update({ status })
-      .eq('id', id)
+      .select(
+        'id, email, phone, total, status, created_at, paid_at, stripe_session_id'
+      )
+      .order('created_at', { ascending: false })
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ orders: data || [] })
   } catch (error) {
-    console.error('Admin order status update error:', error)
+    console.error('Admin orders GET error:', error)
     return NextResponse.json(
       { error: 'Unexpected server error' },
       { status: 500 }

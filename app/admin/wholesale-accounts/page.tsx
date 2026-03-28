@@ -1,6 +1,5 @@
 import { requireAdmin } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
-import AdminSubnav from '@/components/AdminSubnav'
 import styles from './wholesale-accounts.module.css'
 
 export const dynamic = 'force-dynamic'
@@ -33,7 +32,7 @@ export default async function AdminWholesaleAccountsPage() {
     return (
       <main className={styles.page}>
         <div className={styles.shell}>
-          <AdminSubnav />
+          
           <div className={styles.errorCard}>
             Failed to load wholesale accounts: {error.message}
           </div>
@@ -50,8 +49,7 @@ export default async function AdminWholesaleAccountsPage() {
   return (
     <main className={styles.page}>
       <div className={styles.shell}>
-        <AdminSubnav />
-
+       
         <div className={styles.topBar}>
           <div>
             <p className={styles.eyebrow}>Admin</p>

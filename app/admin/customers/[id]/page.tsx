@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { requireAdmin } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
-import AdminSubnav from '@/components/AdminSubnav'
+
 import CustomerRoleForm from './CustomerRoleForm'
 import styles from './customer-detail.module.css'
 
@@ -53,7 +53,7 @@ export default async function AdminCustomerDetailPage({
     return (
       <main className={styles.page}>
         <div className={styles.shell}>
-          <AdminSubnav />
+         
           <div className={styles.errorCard}>
             {profileError?.message || 'Customer not found'}
           </div>
@@ -79,7 +79,7 @@ export default async function AdminCustomerDetailPage({
   return (
     <main className={styles.page}>
       <div className={styles.shell}>
-        <AdminSubnav />
+   
 
         <div className={styles.topRow}>
           <div>

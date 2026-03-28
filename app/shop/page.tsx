@@ -70,15 +70,17 @@ export default function ShopPage() {
               href={`/product/${product.id}`}
               className={styles.card}
             >
-              {product.image_url ? (
-                <img
-                  src={product.image_url}
-                  alt={product.name}
-                  className={styles.image}
-                />
-              ) : (
-                <div className={styles.imagePlaceholder}>No image</div>
-              )}
+{product.image_url ? (
+  <div className={styles.imageWrap}>
+    <img
+      src={product.image_url}
+      alt={product.name}
+      className={styles.image}
+    />
+  </div>
+) : (
+  <div className={styles.imagePlaceholder}>No image</div>
+)}
 
               <h2 className={styles.cardTitle}>{product.name}</h2>
 

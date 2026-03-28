@@ -1,8 +1,7 @@
 import { requireAdmin } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
-import AdminSubnav from '@/components/AdminSubnav'
-import WholesaleRequestList from './WholesaleRequestList'
 import styles from './wholesale.module.css'
+import WholesaleAdminPanel from './WholesaleAdminPanel'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,44 +18,60 @@ type WholesaleRequestRow = {
   created_at: string | null
 }
 
+type WholesaleAccountRow = {
+  id: string
+  email: string | null
+  role: string
+  created_at: string | null
+}
+
 export default async function AdminWholesalePage() {
   await requireAdmin()
 
-  const { data, error } = await supabaseAdmin
+  const { data: requestsData, error: requestsError } = await supabaseAdmin
     .from('wholesale_requests')
     .select(
       'id, user_id, email, business_name, contact_name, phone, website, notes, status, created_at'
     )
     .order('created_at', { ascending: false })
 
-  if (error) {
+  if (requestsError) {
     return (
       <main className={styles.page}>
         <div className={styles.shell}>
-          <AdminSubnav />
           <div className={styles.errorCard}>
-            Failed to load wholesale requests: {error.message}
+            Failed to load wholesale requests: {requestsError.message}
           </div>
         </div>
       </main>
     )
   }
 
-  const requests = (data || []) as WholesaleRequestRow[]
+  const { data: accountsData, error: accountsError } = await supabaseAdmin
+    .from('profiles')
+    .select('id, email, role, created_at')
+    .in('role', ['wholesale', 'admin'])
+    .order('created_at', { ascending: false })
+
+  if (accountsError) {
+    return (
+      <main className={styles.page}>
+        <div className={styles.shell}>
+          <div className={styles.errorCard}>
+            Failed to load wholesale accounts: {accountsError.message}
+          </div>
+        </div>
+      </main>
+    )
+  }
 
   return (
     <main className={styles.page}>
       <div className={styles.shell}>
-        <AdminSubnav />
-
-        <div className={styles.topBar}>
-          <div>
-            <p className={styles.eyebrow}>Admin</p>
-            <h1 className={styles.title}>Wholesale Requests</h1>
-          </div>
-        </div>
-
-        <WholesaleRequestList initialRequests={requests} />
+        <WholesaleAdminPanel
+          requests={(requestsData || []) as WholesaleRequestRow[]}
+          accounts={(accountsData || []) as WholesaleAccountRow[]}
+        />
       </div>
     </main>
   )

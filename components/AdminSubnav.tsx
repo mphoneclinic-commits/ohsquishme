@@ -5,19 +5,24 @@ import { usePathname } from 'next/navigation'
 import AdminLogoutButton from './AdminLogoutButton'
 import styles from './AdminSubnav.module.css'
 
-export default function AdminSubnav() {
+export default function AdminSubnav({
+  pendingWholesaleCount = 0,
+}: {
+  pendingWholesaleCount?: number
+}) {
   const pathname = usePathname()
 
-  const isOrders = pathname === '/admin/orders' || pathname.startsWith('/admin/orders/')
+  const isOrders =
+    pathname === '/admin/orders' || pathname.startsWith('/admin/orders/')
   const isProducts =
     pathname === '/admin/products' || pathname.startsWith('/admin/products/')
-  const isWholesale = pathname === '/admin/wholesale'
-  const isWholesaleAccounts = pathname === '/admin/wholesale-accounts'
+  const isWholesale =
+    pathname === '/admin/wholesale' || pathname.startsWith('/admin/wholesale/')
   const isCustomers =
     pathname === '/admin/customers' || pathname.startsWith('/admin/customers/')
 
   return (
-    <div className={styles.wrap}>
+    <nav className={styles.wrap}>
       <div className={styles.inner}>
         <div className={styles.tabs}>
           <Link
@@ -39,13 +44,15 @@ export default function AdminSubnav() {
             className={`${styles.tab} ${isWholesale ? styles.tabActive : ''}`}
           >
             Wholesale
-          </Link>
-
-          <Link
-            href="/admin/wholesale-accounts"
-            className={`${styles.tab} ${isWholesaleAccounts ? styles.tabActive : ''}`}
-          >
-            Wholesale Accounts
+            {pendingWholesaleCount > 0 ? (
+              <span
+                className={`${styles.badge} ${
+                  isWholesale ? styles.badgeActive : ''
+                }`}
+              >
+                {pendingWholesaleCount}
+              </span>
+            ) : null}
           </Link>
 
           <Link
@@ -63,6 +70,6 @@ export default function AdminSubnav() {
           <AdminLogoutButton className={styles.tab} />
         </div>
       </div>
-    </div>
+    </nav>
   )
 }

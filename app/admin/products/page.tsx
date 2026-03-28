@@ -1,7 +1,7 @@
 import { requireAdmin } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import ProductAdminList from './ProductAdminList'
-import AdminSubnav from '@/components/AdminSubnav'
+
 import styles from './products.module.css'
 
 export const dynamic = 'force-dynamic'
@@ -32,7 +32,7 @@ export default async function AdminProductsPage() {
     return (
       <main className={styles.page}>
         <div className={styles.shell}>
-          <AdminSubnav />
+         
           <div className={styles.errorCard}>
             Failed to load products: {error.message}
           </div>
@@ -46,8 +46,7 @@ export default async function AdminProductsPage() {
   return (
     <main className={styles.page}>
       <div className={styles.shell}>
-        <AdminSubnav />
-
+       
         <div className={styles.topBar}>
           <div>
             <p className={styles.eyebrow}>Admin</p>

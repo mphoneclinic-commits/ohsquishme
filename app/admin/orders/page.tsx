@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdmin } from '@/lib/auth'
 import OrderStatusForm from './OrderStatusForm'
-import AdminSubnav from '@/components/AdminSubnav'
+
 import styles from './orders.module.css'
 
 export const dynamic = 'force-dynamic'
@@ -76,7 +76,7 @@ export default async function AdminOrdersPage({
     return (
       <main className={styles.page}>
         <div className={styles.shell}>
-          <AdminSubnav />
+     
           <div className={styles.emptyCard}>
             Failed to load orders: {ordersError.message}
           </div>
@@ -100,7 +100,7 @@ export default async function AdminOrdersPage({
       return (
         <main className={styles.page}>
           <div className={styles.shell}>
-            <AdminSubnav />
+
             <div className={styles.emptyCard}>
               Failed to load order items: {itemsError.message}
             </div>
@@ -153,7 +153,7 @@ export default async function AdminOrdersPage({
   return (
     <main className={styles.page}>
       <div className={styles.shell}>
-        <AdminSubnav />
+      
 
         <div className={styles.topBar}>
           <div>

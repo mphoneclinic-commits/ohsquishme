@@ -1,8 +1,7 @@
-import Link from 'next/link'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdmin } from '@/lib/auth'
 import OrderStatusForm from './OrderStatusForm'
-import AdminLogoutButton from './AdminLogoutButton'
+import AdminSubnav from '@/components/AdminSubnav'
 import styles from './orders.module.css'
 
 export const dynamic = 'force-dynamic'
@@ -134,138 +133,138 @@ export default async function AdminOrdersPage({
 
   return (
     <main className={styles.page}>
-      <div className={styles.topBar}>
-        <div>
-          <p className={styles.eyebrow}>Admin</p>
-          <h1 className={styles.title}>Orders Dashboard</h1>
+      <div className={styles.shell}>
+        <AdminSubnav />
+
+        <div className={styles.topBar}>
+          <div>
+            <p className={styles.eyebrow}>Admin</p>
+            <h1 className={styles.title}>Orders Dashboard</h1>
+          </div>
         </div>
 
-        <div>
-          <AdminLogoutButton />
-        </div>
-      </div>
+        <section className={styles.summaryGrid}>
+          <SummaryCard label="All Orders" value={counts.all} />
+          <SummaryCard label="Paid" value={counts.paid} />
+          <SummaryCard label="Packed" value={counts.packed} />
+          <SummaryCard label="Shipped" value={counts.shipped} />
+          <SummaryCard label="Stock Issues" value={counts.stock_issue} />
+          <SummaryCard label="Payment Failed" value={counts.payment_failed} />
+        </section>
 
-      <section className={styles.summaryGrid}>
-        <SummaryCard label="All Orders" value={counts.all} />
-        <SummaryCard label="Paid" value={counts.paid} />
-        <SummaryCard label="Packed" value={counts.packed} />
-        <SummaryCard label="Shipped" value={counts.shipped} />
-        <SummaryCard label="Stock Issues" value={counts.stock_issue} />
-        <SummaryCard label="Payment Failed" value={counts.payment_failed} />
-      </section>
+        <form method="GET" className={styles.filterForm}>
+          <input
+            type="text"
+            name="q"
+            defaultValue={q}
+            placeholder="Search by email, phone, order id, item name..."
+            className={styles.input}
+          />
 
-      <form method="GET" className={styles.filterForm}>
-        <input
-          type="text"
-          name="q"
-          defaultValue={q}
-          placeholder="Search by email, phone, order id, item name..."
-          className={styles.input}
-        />
+          <select
+            name="status"
+            defaultValue={statusFilter}
+            className={styles.select}
+          >
+            <option value="">All statuses</option>
+            {STATUS_OPTIONS.map((status) => (
+              <option key={status} value={status}>
+                {status}
+              </option>
+            ))}
+          </select>
 
-        <select
-          name="status"
-          defaultValue={statusFilter}
-          className={styles.select}
-        >
-          <option value="">All statuses</option>
-          {STATUS_OPTIONS.map((status) => (
-            <option key={status} value={status}>
-              {status}
-            </option>
-          ))}
-        </select>
+          <button type="submit" className={styles.primaryButton}>
+            Apply
+          </button>
+        </form>
 
-        <button type="submit" className={styles.primaryButton}>
-          Apply
-        </button>
-      </form>
+        {filteredOrders.length === 0 ? (
+          <div className={styles.emptyCard}>No matching orders found.</div>
+        ) : (
+          <section className={styles.orderList}>
+            {filteredOrders.map((order) => {
+              const orderItems = itemsByOrderId.get(order.id) || []
+              const itemCount = orderItems.reduce(
+                (sum, item) => sum + Number(item.quantity || 0),
+                0
+              )
 
-      {filteredOrders.length === 0 ? (
-        <div className={styles.emptyCard}>No matching orders found.</div>
-      ) : (
-        <section className={styles.orderList}>
-          {filteredOrders.map((order) => {
-            const orderItems = itemsByOrderId.get(order.id) || []
-            const itemCount = orderItems.reduce(
-              (sum, item) => sum + Number(item.quantity || 0),
-              0
-            )
+              return (
+                <article key={order.id} className={styles.orderCard}>
+                  <div className={styles.orderTop}>
+                    <div>
+                      <div className={styles.orderHeadingRow}>
+                        <h2 className={styles.orderTitle}>
+                          Order {order.id.slice(0, 8)}
+                        </h2>
 
-            return (
-              <article key={order.id} className={styles.orderCard}>
-                <div className={styles.orderTop}>
-                  <div>
-                    <div className={styles.orderHeadingRow}>
-                      <h2 className={styles.orderTitle}>
-                        Order {order.id.slice(0, 8)}
-                      </h2>
+                        <span className={styles.statusBadge}>
+                          {order.status || 'unknown'}
+                        </span>
+                      </div>
 
-                      <span className={styles.statusBadge}>
-                        {order.status || 'unknown'}
-                      </span>
+                      <div className={styles.infoGrid}>
+                        <InfoRow label="Customer Email" value={order.email || '—'} />
+                        <InfoRow label="Phone" value={order.phone || '—'} />
+                        <InfoRow label="Total" value={formatMoney(order.total)} />
+                        <InfoRow label="Created" value={formatDate(order.created_at)} />
+                        <InfoRow label="Paid At" value={formatDate(order.paid_at)} />
+                        <InfoRow label="Items" value={String(itemCount)} />
+                        <InfoRow
+                          label="Stripe Session"
+                          value={order.stripe_session_id || '—'}
+                        />
+                      </div>
                     </div>
 
-                    <div className={styles.infoGrid}>
-                      <InfoRow label="Customer Email" value={order.email || '—'} />
-                      <InfoRow label="Phone" value={order.phone || '—'} />
-                      <InfoRow label="Total" value={formatMoney(order.total)} />
-                      <InfoRow label="Created" value={formatDate(order.created_at)} />
-                      <InfoRow label="Paid At" value={formatDate(order.paid_at)} />
-                      <InfoRow label="Items" value={String(itemCount)} />
-                      <InfoRow
-                        label="Stripe Session"
-                        value={order.stripe_session_id || '—'}
-                      />
-                    </div>
+                    <OrderStatusForm
+                      orderId={order.id}
+                      currentStatus={order.status || 'pending'}
+                      statusOptions={STATUS_OPTIONS}
+                    />
                   </div>
 
-                  <OrderStatusForm
-                    orderId={order.id}
-                    currentStatus={order.status || 'pending'}
-                    statusOptions={STATUS_OPTIONS}
-                  />
-                </div>
+                  <div className={styles.lineItemsSection}>
+                    <h3 className={styles.lineItemsTitle}>Line Items</h3>
 
-                <div className={styles.lineItemsSection}>
-                  <h3 className={styles.lineItemsTitle}>Line Items</h3>
-
-                  {orderItems.length === 0 ? (
-                    <p className={styles.mutedText}>No items found.</p>
-                  ) : (
-                    <div className={styles.lineItemsList}>
-                      {orderItems.map((item) => (
-                        <div key={item.id} className={styles.lineItem}>
-                          <div className={styles.lineItemMain}>
-                            <div className={styles.lineItemName}>
-                              {item.name || 'Unnamed item'}
+                    {orderItems.length === 0 ? (
+                      <p className={styles.mutedText}>No items found.</p>
+                    ) : (
+                      <div className={styles.lineItemsList}>
+                        {orderItems.map((item) => (
+                          <div key={item.id} className={styles.lineItem}>
+                            <div className={styles.lineItemMain}>
+                              <div className={styles.lineItemName}>
+                                {item.name || 'Unnamed item'}
+                              </div>
+                              <div className={styles.lineItemSubtext}>
+                                Product ID: {item.product_id || '—'}
+                              </div>
                             </div>
-                            <div className={styles.lineItemSubtext}>
-                              Product ID: {item.product_id || '—'}
+
+                            <div className={styles.lineItemCell}>
+                              Qty: {item.quantity || 0}
+                            </div>
+                            <div className={styles.lineItemCell}>
+                              {formatMoney(item.price)}
+                            </div>
+                            <div className={styles.lineItemCell}>
+                              {formatMoney(
+                                Number(item.price || 0) * Number(item.quantity || 0)
+                              )}
                             </div>
                           </div>
-
-                          <div className={styles.lineItemCell}>
-                            Qty: {item.quantity || 0}
-                          </div>
-                          <div className={styles.lineItemCell}>
-                            {formatMoney(item.price)}
-                          </div>
-                          <div className={styles.lineItemCell}>
-                            {formatMoney(
-                              Number(item.price || 0) * Number(item.quantity || 0)
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </article>
-            )
-          })}
-        </section>
-      )}
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </article>
+              )
+            })}
+          </section>
+        )}
+      </div>
     </main>
   )
 }

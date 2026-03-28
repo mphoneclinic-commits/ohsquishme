@@ -21,29 +21,6 @@
   gap: 18px;
 }
 
-.logoWrap {
-  width: 100px;
-  height: 100px;
-  border-radius: 18px;
-  background: #fff;
-  border: 1px solid #f1dce5;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-
-  box-shadow:
-    0 6px 18px rgba(255, 105, 160, 0.08),
-    0 2px 6px rgba(0, 0, 0, 0.04);
-}
-
-.logo {
-  width: 200px;
-  height: 200px;
-  object-fit: contain;
-  border-radius: 12px;
-}
-
 .brand {
   display: flex;
   align-items: center;
@@ -53,7 +30,27 @@
   min-width: 0;
 }
 
+.logoWrap {
+  width: 68px;
+  height: 68px;
+  border-radius: 18px;
+  background: #fff;
+  border: 1px solid #f1dce5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow:
+    0 6px 18px rgba(255, 105, 160, 0.08),
+    0 2px 6px rgba(0, 0, 0, 0.04);
+}
 
+.logo {
+  width: 68px;
+  height: 68px;
+  object-fit: contain;
+  border-radius: 12px;
+}
 
 .brandText {
   display: flex;
@@ -63,11 +60,11 @@
 
 .brandTitle {
   font-family: var(--font-brand), Arial, sans-serif;
-  font-size: 2.0rem;
+  font-size: 1.25rem;
   font-weight: 700;
   letter-spacing: -0.02em;
   line-height: 1.05;
-  color: #d63384; /* soft pink tone */
+  color: #d63384;
 }
 
 .brandSub {
@@ -90,27 +87,18 @@
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+  justify-content: center;
 }
 
-.navDivider {
-  width: 1px;
-  height: 28px;
-  background: #f1dce5;
-}
-
-.navLink,
-.adminLink {
+.navLink {
   text-decoration: none !important;
   border-bottom: none !important;
-
   color: #4b3b42;
   padding: 9px 14px;
   border-radius: 999px;
   font-size: 14px;
-
   display: inline-flex;
   align-items: center;
-
   transition: all 0.18s ease;
 }
 
@@ -119,12 +107,10 @@
   color: #d63384;
   text-decoration: none;
 }
-
-.adminLink:hover {
-  background: #fff0f5;
-  border-color: #e8b8c8;
-  color: #c2185b;
-  text-decoration: none;
+.navLinkActive {
+  background: #ffe9f1;
+  color: #d63384;
+  font-weight: 600;
 }
 .cartLink {
   text-decoration: none;
@@ -133,13 +119,10 @@
   font-weight: 700;
   font-size: 14px;
   white-space: nowrap;
-
   background: linear-gradient(135deg, #ff6fa5, #ff8fb8);
   color: #fff;
   border: none;
-
   box-shadow: 0 6px 16px rgba(255, 105, 160, 0.25);
-
   transition:
     transform 0.15s ease,
     box-shadow 0.15s ease,
@@ -159,60 +142,13 @@
     text-align: center;
   }
 
-.logoWrap {
-  width: 80px;
-  height: 80px;
-  border-radius: 18px;
-  background: #fff;
-  border: 1px solid #f1dce5;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
+  .brand {
+    justify-content: center;
+  }
 
-  box-shadow:
-    0 6px 18px rgba(255, 105, 160, 0.08),
-    0 2px 6px rgba(0, 0, 0, 0.04);
-}
-
-.logo {
-  width: 150px;
-  height: 150px;
-  object-fit: contain;
-  border-radius: 12px;
-}
-
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  text-decoration: none;
-  color: inherit;
-  min-width: 0;
-}
-
-
-.brandText {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.brandTitle {
-  font-family: var(--font-brand), Arial, sans-serif;
-  font-size: 1.75rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  line-height: 1.05;
-  color: #d63384; /* soft pink tone */
-}
-
-.brandSub {
-  font-size: 10px;
-  color: #7a6f76;
-  line-height: 1.2;
-  margin-top: 2px;
-}
+  .brandText {
+    align-items: center;
+  }
 
   .nav {
     width: 100%;
@@ -222,71 +158,31 @@
   .navGroup {
     justify-content: center;
   }
-
-  .navDivider {
-    display: none;
-  }
 }
+
 @media (max-width: 640px) {
   .headerInner {
     padding: 12px 14px;
     gap: 12px;
   }
 
-.logoWrap {
-  width: 80px;
-  height: 80px;
-  border-radius: 18px;
-  background: #fff;
-  border: 1px solid #f1dce5;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
+  .brandTitle {
+    font-size: 1.05rem;
+  }
 
-  box-shadow:
-    0 6px 18px rgba(255, 105, 160, 0.08),
-    0 2px 6px rgba(0, 0, 0, 0.04);
-}
+  .brandSub {
+    font-size: 11px;
+  }
 
-.logo {
-  width: 150px;
-  height: 150px;
-  object-fit: contain;
-  border-radius: 12px;
-}
+  .logoWrap {
+    width: 56px;
+    height: 56px;
+  }
 
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  text-decoration: none;
-  color: inherit;
-  min-width: 0;
-}
-
-
-.brandText {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.brandTitle {
-  font-family: var(--font-brand), Arial, sans-serif;
-  font-size: 1.75rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  line-height: 1.05;
-  color: #d63384; /* soft pink tone */
-}
-
-.brandSub {
-  font-size: 10px;
-  color: #7a6f76;
-  line-height: 1.2;
-  margin-top: 2px;
-}
+  .logo {
+    width: 54px;
+    height: 54px;
+  }
 
   .nav {
     gap: 10px;

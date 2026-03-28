@@ -30,6 +30,13 @@ type OrderItemRow = {
   quantity: number | null
 }
 
+type WholesaleRequestRow = {
+  id: string
+  status: string
+  business_name: string
+  created_at: string | null
+}
+
 export default async function AccountPage() {
   const supabase = await createClient()
 
@@ -40,6 +47,7 @@ export default async function AccountPage() {
   let profile: ProfileRow | null = null
   let orders: OrderRow[] = []
   let orderItems: OrderItemRow[] = []
+  let wholesaleRequest: WholesaleRequestRow | null = null
 
   if (user) {
     const { data: profileData } = await supabaseAdmin
@@ -49,6 +57,16 @@ export default async function AccountPage() {
       .single()
 
     profile = (profileData as ProfileRow | null) ?? null
+
+    const { data: wholesaleData } = await supabaseAdmin
+      .from('wholesale_requests')
+      .select('id, status, business_name, created_at')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    wholesaleRequest = (wholesaleData as WholesaleRequestRow | null) ?? null
 
     if (user.email) {
       const { data: ordersData } = await supabaseAdmin
@@ -91,6 +109,7 @@ export default async function AccountPage() {
             createdAt={profile?.created_at ?? null}
             orders={orders}
             orderItems={orderItems}
+            wholesaleRequest={wholesaleRequest}
           />
         ) : (
           <AccountAuthCard />

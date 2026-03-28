@@ -261,6 +261,20 @@
   font-weight: 700;
 }
 
+.wholesaleNote {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: #ecfdf3;
+  color: #067647;
+  border: 1px solid #b7ebcd;
+  font-size: 13px;
+  font-weight: 600;
+  width: fit-content;
+}
+
 .error {
   color: crimson;
 }

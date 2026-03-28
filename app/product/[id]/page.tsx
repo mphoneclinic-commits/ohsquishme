@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useCart } from '@/components/CartProvider'
+import { useAuthRole } from '@/components/AuthProvider'
+import { getEffectivePrice } from '@/lib/pricing'
 import styles from './product.module.css'
 
 type Product = {
@@ -29,6 +31,7 @@ export default function ProductPage() {
   const [quantity, setQuantity] = useState(1)
 
   const { addItem } = useCart()
+  const { role, isWholesale, loading: loadingRole } = useAuthRole()
 
   useEffect(() => {
     if (!productId || typeof productId !== 'string') {
@@ -77,6 +80,8 @@ export default function ProductPage() {
     setLoading(false)
   }
 
+  const effectivePrice = product ? getEffectivePrice(product, role) : 0
+
   const stockMessage = useMemo(() => {
     if (!product) return ''
     if (product.stock <= 0) return 'Out of stock'
@@ -94,21 +99,21 @@ export default function ProductPage() {
   }
 
   function handleAddToCart() {
-  if (!product) return
+    if (!product) return
 
-  addItem({
-    id: product.id,
-    name: product.name,
-    price: Number(product.price_retail),
-    image_url: product.image_url,
-    quantity,
-  })
+    addItem({
+      id: product.id,
+      name: product.name,
+      price: effectivePrice,
+      image_url: product.image_url,
+      quantity,
+    })
 
-  setAdded(true)
-  window.setTimeout(() => setAdded(false), 1200)
-}
+    setAdded(true)
+    window.setTimeout(() => setAdded(false), 1200)
+  }
 
-  if (loading) {
+  if (loading || loadingRole) {
     return <main className={styles.page}>Loading product...</main>
   }
 
@@ -144,14 +149,12 @@ export default function ProductPage() {
         </div>
 
         <div className={styles.content}>
-          <p className={styles.eyebrow}>Taba Squishies</p>
+          <p className={styles.eyebrow}>Oh Squish Me</p>
 
           <h1 className={styles.title}>{product.name}</h1>
 
           <div className={styles.priceRow}>
-            <p className={styles.price}>
-              ${Number(product.price_retail).toFixed(2)}
-            </p>
+            <p className={styles.price}>${effectivePrice.toFixed(2)}</p>
             <span
               className={
                 product.stock > 0 ? styles.stockBadgeIn : styles.stockBadgeOut
@@ -160,6 +163,10 @@ export default function ProductPage() {
               {stockMessage}
             </span>
           </div>
+
+          {isWholesale ? (
+            <div className={styles.wholesaleNote}>Wholesale pricing active</div>
+          ) : null}
 
           <p className={styles.description}>
             {product.description || 'No description yet.'}
@@ -212,7 +219,7 @@ export default function ProductPage() {
                 {added
                   ? 'Added to cart'
                   : `Add ${quantity} to cart · $${(
-                      Number(product.price_retail) * quantity
+                      effectivePrice * quantity
                     ).toFixed(2)}`}
               </button>
             </div>
@@ -234,28 +241,32 @@ export default function ProductPage() {
           </div>
 
           <div className={styles.relatedGrid}>
-            {relatedProducts.map((item) => (
-              <a
-                key={item.id}
-                href={`/product/${item.id}`}
-                className={styles.relatedCard}
-              >
-                {item.image_url ? (
-                  <img
-                    src={item.image_url}
-                    alt={item.name}
-                    className={styles.relatedImage}
-                  />
-                ) : (
-                  <div className={styles.relatedImagePlaceholder}>No image</div>
-                )}
+            {relatedProducts.map((item) => {
+              const relatedPrice = getEffectivePrice(item, role)
 
-                <h3 className={styles.relatedName}>{item.name}</h3>
-                <p className={styles.relatedPrice}>
-                  ${Number(item.price_retail).toFixed(2)}
-                </p>
-              </a>
-            ))}
+              return (
+                <a
+                  key={item.id}
+                  href={`/product/${item.id}`}
+                  className={styles.relatedCard}
+                >
+                  {item.image_url ? (
+                    <img
+                      src={item.image_url}
+                      alt={item.name}
+                      className={styles.relatedImage}
+                    />
+                  ) : (
+                    <div className={styles.relatedImagePlaceholder}>No image</div>
+                  )}
+
+                  <h3 className={styles.relatedName}>{item.name}</h3>
+                  <p className={styles.relatedPrice}>
+                    ${relatedPrice.toFixed(2)}
+                  </p>
+                </a>
+              )
+            })}
           </div>
         </section>
       ) : null}

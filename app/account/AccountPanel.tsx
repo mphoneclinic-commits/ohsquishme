@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import styles from './account.module.css'
@@ -19,6 +20,13 @@ type OrderItemRow = {
   name: string | null
   price: number | string | null
   quantity: number | null
+}
+
+type WholesaleRequestRow = {
+  id: string
+  status: string
+  business_name: string
+  created_at: string | null
 }
 
 function formatRole(role: string) {
@@ -50,14 +58,24 @@ export default function AccountPanel({
   createdAt,
   orders,
   orderItems,
+  wholesaleRequest,
 }: {
   email: string
   role: string
   createdAt: string | null
   orders: OrderRow[]
   orderItems: OrderItemRow[]
+  wholesaleRequest: WholesaleRequestRow | null
 }) {
   const router = useRouter()
+  const [businessName, setBusinessName] = useState('')
+  const [contactName, setContactName] = useState('')
+  const [phone, setPhone] = useState('')
+  const [website, setWebsite] = useState('')
+  const [notes, setNotes] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [message, setMessage] = useState('')
+  const [errorMessage, setErrorMessage] = useState('')
 
   async function handleSignOut() {
     const supabase = createClient()
@@ -65,7 +83,44 @@ export default function AccountPanel({
     router.refresh()
   }
 
+  async function handleWholesaleRequest(
+    event: React.FormEvent<HTMLFormElement>
+  ) {
+    event.preventDefault()
+    setSaving(true)
+    setMessage('')
+    setErrorMessage('')
+
+    try {
+      const res = await fetch('/api/account/wholesale-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          business_name: businessName,
+          contact_name: contactName,
+          phone,
+          website,
+          notes,
+        }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        setErrorMessage(data.error || 'Failed to submit wholesale request')
+        setSaving(false)
+        return
+      }
+
+      setMessage('Wholesale request submitted. We’ll review it shortly.')
+      router.refresh()
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const isWholesale = role === 'wholesale' || role === 'admin'
+  const hasPendingRequest = wholesaleRequest?.status === 'pending'
 
   return (
     <section className={styles.accountStack}>
@@ -116,11 +171,84 @@ export default function AccountPanel({
 
           <p className={styles.bodyText}>
             {isWholesale
-              ? 'Your account is approved for wholesale pricing.'
-              : 'If you want wholesale pricing, contact us and we can review your account for wholesale access.'}
+              ? 'Your account is approved for wholesale pricing. Eligible products across the shop will automatically show your wholesale rate.'
+              : hasPendingRequest
+              ? 'Your wholesale request is currently pending review.'
+              : 'Want wholesale pricing? Submit a request below and we’ll review your account.'}
           </p>
+
+          {!isWholesale && wholesaleRequest ? (
+            <div className={styles.infoCard}>
+              <span className={styles.infoLabel}>Latest request</span>
+              <span className={styles.infoValue}>
+                {wholesaleRequest.business_name} · {formatStatus(wholesaleRequest.status)}
+              </span>
+            </div>
+          ) : null}
         </div>
       </div>
+
+      {!isWholesale && !hasPendingRequest ? (
+        <div className={styles.card}>
+          <p className={styles.sectionEyebrow}>Wholesale request</p>
+          <h2 className={styles.sectionTitle}>Apply for wholesale access</h2>
+
+          <form onSubmit={handleWholesaleRequest} className={styles.form}>
+            <input
+              type="text"
+              value={businessName}
+              onChange={(e) => setBusinessName(e.target.value)}
+              placeholder="Business name"
+              required
+              className={styles.input}
+            />
+
+            <div className={styles.twoCol}>
+              <input
+                type="text"
+                value={contactName}
+                onChange={(e) => setContactName(e.target.value)}
+                placeholder="Contact name"
+                className={styles.input}
+              />
+
+              <input
+                type="text"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="Phone"
+                className={styles.input}
+              />
+            </div>
+
+            <input
+              type="text"
+              value={website}
+              onChange={(e) => setWebsite(e.target.value)}
+              placeholder="Website / Instagram / store link"
+              className={styles.input}
+            />
+
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Tell us a bit about your store or wholesale needs"
+              className={styles.textarea}
+            />
+
+            <button
+              type="submit"
+              disabled={saving}
+              className={styles.primaryButton}
+            >
+              {saving ? 'Submitting...' : 'Submit wholesale request'}
+            </button>
+
+            {message ? <div className={styles.successBox}>{message}</div> : null}
+            {errorMessage ? <div className={styles.errorBox}>{errorMessage}</div> : null}
+          </form>
+        </div>
+      ) : null}
 
       <div className={styles.card}>
         <p className={styles.sectionEyebrow}>Orders</p>

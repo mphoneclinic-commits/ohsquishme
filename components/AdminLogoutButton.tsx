@@ -2,9 +2,12 @@
 
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import styles from './orders.module.css'
 
-export default function AdminLogoutButton() {
+export default function AdminLogoutButton({
+  className,
+}: {
+  className?: string
+}) {
   const router = useRouter()
 
   async function handleLogout() {
@@ -15,12 +18,8 @@ export default function AdminLogoutButton() {
   }
 
   return (
- <button
-  type="button"
-  onClick={handleLogout}
-  className={styles.logoutButton}
->
-  Sign out
-</button>
+    <button type="button" onClick={handleLogout} className={className}>
+      Sign out
+    </button>
   )
 }

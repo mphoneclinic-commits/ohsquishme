@@ -1,30 +1,31 @@
 import { requireAdmin } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
-import ProductAdminList from './ProductAdminList'
 import AdminSubnav from '@/components/AdminSubnav'
-import styles from './products.module.css'
+import WholesaleRequestList from './WholesaleRequestList'
+import styles from './wholesale.module.css'
 
 export const dynamic = 'force-dynamic'
 
-type ProductRow = {
+type WholesaleRequestRow = {
   id: string
-  name: string | null
-  description: string | null
-  price_retail: number | string | null
-  price_wholesale: number | string | null
-  stock: number | null
-  image_url: string | null
-  active: boolean | null
+  user_id: string
+  email: string | null
+  business_name: string
+  contact_name: string | null
+  phone: string | null
+  website: string | null
+  notes: string | null
+  status: string
   created_at: string | null
 }
 
-export default async function AdminProductsPage() {
+export default async function AdminWholesalePage() {
   await requireAdmin()
 
   const { data, error } = await supabaseAdmin
-    .from('products')
+    .from('wholesale_requests')
     .select(
-      'id, name, description, price_retail, price_wholesale, stock, image_url, active, created_at'
+      'id, user_id, email, business_name, contact_name, phone, website, notes, status, created_at'
     )
     .order('created_at', { ascending: false })
 
@@ -34,14 +35,14 @@ export default async function AdminProductsPage() {
         <div className={styles.shell}>
           <AdminSubnav />
           <div className={styles.errorCard}>
-            Failed to load products: {error.message}
+            Failed to load wholesale requests: {error.message}
           </div>
         </div>
       </main>
     )
   }
 
-  const products = (data || []) as ProductRow[]
+  const requests = (data || []) as WholesaleRequestRow[]
 
   return (
     <main className={styles.page}>
@@ -51,11 +52,11 @@ export default async function AdminProductsPage() {
         <div className={styles.topBar}>
           <div>
             <p className={styles.eyebrow}>Admin</p>
-            <h1 className={styles.title}>Products</h1>
+            <h1 className={styles.title}>Wholesale Requests</h1>
           </div>
         </div>
 
-        <ProductAdminList initialProducts={products} />
+        <WholesaleRequestList initialRequests={requests} />
       </div>
     </main>
   )

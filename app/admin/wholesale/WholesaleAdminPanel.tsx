@@ -42,7 +42,10 @@ export default function WholesaleAdminPanel({
   const [accountRows, setAccountRows] = useState(accounts)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [query, setQuery] = useState('')
-  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all')
+  const [statusFilter, setStatusFilter] = useState<
+    'all' | 'pending' | 'approved' | 'rejected'
+  >('all')
+  const [toast, setToast] = useState('')
 
   const filteredRequests = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -90,47 +93,12 @@ export default function WholesaleAdminPanel({
         .includes(q)
     )
   }, [accountRows, query])
-async function handleDeleteRequest(requestId: string) {
-  const confirmed = window.confirm(
-    'Delete this wholesale request record? This cannot be undone.'
-  )
-  if (!confirmed) return
 
-  setBusyId(requestId)
-
-  try {
-    const res = await fetch(`/api/admin/wholesale-requests/${requestId}`, {
-      method: 'DELETE',
-    })
-
-    const data = await res.json()
-
-    if (!res.ok) {
-      alert(data.error || 'Failed to delete request')
-      return
-    }
-
-    setRequestRows((current) =>
-      current.filter((request) => request.id !== requestId)
-    )
-  } finally {
-    setBusyId(null)
+  function showToast(text: string) {
+    setToast(text)
+    window.setTimeout(() => setToast(''), 2000)
   }
-}
-function SummaryCard({
-  label,
-  value,
-}: {
-  label: string
-  value: number
-}) {
-  return (
-    <div className={styles.summaryCard}>
-      <div className={styles.summaryLabel}>{label}</div>
-      <div className={styles.summaryValue}>{value}</div>
-    </div>
-  )
-}
+
   async function handleRequestAction(id: string, action: 'approve' | 'reject') {
     setBusyId(id)
 
@@ -145,7 +113,6 @@ function SummaryCard({
 
       if (!res.ok) {
         alert(data.error || `Failed to ${action} request`)
-        setBusyId(null)
         return
       }
 
@@ -157,7 +124,9 @@ function SummaryCard({
 
       if (action === 'approve') {
         setAccountRows((current) => {
-          const exists = current.some((account) => account.id === updated.user_id)
+          const exists = current.some(
+            (account) => account.id === updated.user_id
+          )
           if (exists) return current
 
           return [
@@ -170,6 +139,10 @@ function SummaryCard({
             ...current,
           ]
         })
+
+        showToast('Request approved')
+      } else {
+        showToast('Request rejected')
       }
     } finally {
       setBusyId(null)
@@ -177,10 +150,10 @@ function SummaryCard({
   }
 
   async function handleDowngrade(userId: string) {
-    const confirmed = window.confirm(
-      'Remove wholesale access and change this account back to customer?'
+    const confirmed = window.prompt(
+      'Type REMOVE to confirm removing wholesale access'
     )
-    if (!confirmed) return
+    if (confirmed !== 'REMOVE') return
 
     setBusyId(userId)
 
@@ -195,13 +168,44 @@ function SummaryCard({
 
       if (!res.ok) {
         alert(data.error || 'Failed to update role')
-        setBusyId(null)
         return
       }
 
       setAccountRows((current) =>
         current.filter((account) => account.id !== userId)
       )
+
+      showToast('Wholesale access removed')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  async function handleDeleteRequest(requestId: string) {
+    const confirmed = window.prompt(
+      'Type DELETE to confirm removing this request'
+    )
+    if (confirmed !== 'DELETE') return
+
+    setBusyId(requestId)
+
+    try {
+      const res = await fetch(`/api/admin/wholesale-requests/${requestId}`, {
+        method: 'DELETE',
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        alert(data.error || 'Failed to delete request')
+        return
+      }
+
+      setRequestRows((current) =>
+        current.filter((request) => request.id !== requestId)
+      )
+
+      showToast('Request deleted')
     } finally {
       setBusyId(null)
     }
@@ -266,13 +270,15 @@ function SummaryCard({
         ) : (
           <div className={styles.requestList}>
             {pendingRequests.map((request) => {
-              const isBusy = busyId === request.id
+              const isBusy = busyId !== null
 
               return (
                 <article key={request.id} className={styles.requestCard}>
                   <div className={styles.requestHeader}>
                     <div>
-                      <h3 className={styles.requestTitle}>{request.business_name}</h3>
+                      <h3 className={styles.requestTitle}>
+                        {request.business_name}
+                      </h3>
                       <p className={styles.requestMeta}>
                         Submitted {formatDate(request.created_at)}
                       </p>
@@ -283,7 +289,10 @@ function SummaryCard({
 
                   <div className={styles.infoGrid}>
                     <InfoCard label="Email" value={request.email || '—'} />
-                    <InfoCard label="Contact" value={request.contact_name || '—'} />
+                    <InfoCard
+                      label="Contact"
+                      value={request.contact_name || '—'}
+                    />
                     <InfoCard label="Phone" value={request.phone || '—'} />
                     <InfoCard label="Website" value={request.website || '—'} />
                     <InfoCard label="User ID" value={request.user_id} mono />
@@ -299,7 +308,9 @@ function SummaryCard({
                   <div className={styles.actionRow}>
                     <button
                       type="button"
-                      onClick={() => handleRequestAction(request.id, 'approve')}
+                      onClick={() =>
+                        handleRequestAction(request.id, 'approve')
+                      }
                       disabled={isBusy}
                       className={styles.approveButton}
                     >
@@ -308,7 +319,9 @@ function SummaryCard({
 
                     <button
                       type="button"
-                      onClick={() => handleRequestAction(request.id, 'reject')}
+                      onClick={() =>
+                        handleRequestAction(request.id, 'reject')
+                      }
                       disabled={isBusy}
                       className={styles.rejectButton}
                     >
@@ -328,11 +341,13 @@ function SummaryCard({
         </div>
 
         {filteredAccounts.length === 0 ? (
-          <div className={styles.emptyCard}>No approved wholesale accounts found.</div>
+          <div className={styles.emptyCard}>
+            No approved wholesale accounts found.
+          </div>
         ) : (
           <div className={styles.accountList}>
             {filteredAccounts.map((account) => {
-              const isBusy = busyId === account.id
+              const isBusy = busyId !== null
 
               return (
                 <article key={account.id} className={styles.accountCard}>
@@ -360,7 +375,10 @@ function SummaryCard({
                   <div className={styles.infoGrid}>
                     <InfoCard label="Email" value={account.email || '—'} />
                     <InfoCard label="Role" value={account.role} />
-                    <InfoCard label="Created" value={formatDate(account.created_at)} />
+                    <InfoCard
+                      label="Created"
+                      value={formatDate(account.created_at)}
+                    />
                     <InfoCard label="User ID" value={account.id} mono />
                   </div>
 
@@ -372,7 +390,7 @@ function SummaryCard({
                         disabled={isBusy}
                         className={styles.rejectButton}
                       >
-                        {isBusy ? 'Updating...' : 'Remove Wholesale Access'}
+                        {isBusy ? 'Working...' : 'Remove Wholesale Access'}
                       </button>
                     </div>
                   ) : null}
@@ -390,69 +408,89 @@ function SummaryCard({
           </div>
 
           <div className={styles.requestList}>
-{processedRequests.map((request) => {
-  const isBusy = busyId === request.id || busyId === request.user_id
+            {processedRequests.map((request) => {
+              const isBusy = busyId !== null
 
-  return (
-    <article key={request.id} className={styles.requestCard}>
-      <div className={styles.requestHeader}>
-        <div>
-          <h3 className={styles.requestTitle}>{request.business_name}</h3>
-          <p className={styles.requestMeta}>
-            Submitted {formatDate(request.created_at)}
-          </p>
-        </div>
+              return (
+                <article key={request.id} className={styles.requestCard}>
+                  <div className={styles.requestHeader}>
+                    <div>
+                      <h3 className={styles.requestTitle}>
+                        {request.business_name}
+                      </h3>
+                      <p className={styles.requestMeta}>
+                        Submitted {formatDate(request.created_at)}
+                      </p>
+                    </div>
 
-        <span
-          className={
-            request.status === 'approved'
-              ? styles.statusApproved
-              : styles.statusRejected
-          }
-        >
-          {request.status}
-        </span>
-      </div>
+                    <span
+                      className={
+                        request.status === 'approved'
+                          ? styles.statusApproved
+                          : styles.statusRejected
+                      }
+                    >
+                      {request.status}
+                    </span>
+                  </div>
 
-      <div className={styles.infoGrid}>
-        <InfoCard label="Email" value={request.email || '—'} />
-        <InfoCard label="Contact" value={request.contact_name || '—'} />
-        <InfoCard label="Phone" value={request.phone || '—'} />
-        <InfoCard label="Website" value={request.website || '—'} />
-      </div>
+                  <div className={styles.infoGrid}>
+                    <InfoCard label="Email" value={request.email || '—'} />
+                    <InfoCard
+                      label="Contact"
+                      value={request.contact_name || '—'}
+                    />
+                    <InfoCard label="Phone" value={request.phone || '—'} />
+                    <InfoCard label="Website" value={request.website || '—'} />
+                  </div>
 
-      <div className={styles.actionRow}>
-        {request.status === 'approved' ? (
-          <button
-            type="button"
-            onClick={() => handleDowngrade(request.user_id)}
-            disabled={isBusy}
-            className={styles.rejectButton}
-          >
-            {isBusy ? 'Working...' : 'Remove Wholesale Access'}
-          </button>
-        ) : null}
+                  <div className={styles.actionRow}>
+                    {request.status === 'approved' ? (
+                      <button
+                        type="button"
+                        onClick={() => handleDowngrade(request.user_id)}
+                        disabled={isBusy}
+                        className={styles.rejectButton}
+                      >
+                        {isBusy ? 'Working...' : 'Remove Wholesale Access'}
+                      </button>
+                    ) : null}
 
-        <button
-          type="button"
-          onClick={() => handleDeleteRequest(request.id)}
-          disabled={isBusy}
-          className={styles.deleteButton}
-        >
-          {isBusy ? 'Working...' : 'Delete Request'}
-        </button>
-      </div>
-    </article>
-  )
-})}
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteRequest(request.id)}
+                      disabled={isBusy}
+                      className={styles.deleteButton}
+                    >
+                      {isBusy ? 'Working...' : 'Delete Request'}
+                    </button>
+                  </div>
+                </article>
+              )
+            })}
           </div>
         </section>
       ) : null}
+
+      {toast ? <div className={styles.toast}>{toast}</div> : null}
     </div>
   )
 }
 
-
+function SummaryCard({
+  label,
+  value,
+}: {
+  label: string
+  value: number
+}) {
+  return (
+    <div className={styles.summaryCard}>
+      <div className={styles.summaryLabel}>{label}</div>
+      <div className={styles.summaryValue}>{value}</div>
+    </div>
+  )
+}
 
 function InfoCard({
   label,

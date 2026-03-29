@@ -22,15 +22,7 @@ export async function PATCH(
 
     const { data: existingOrder, error: existingError } = await supabaseAdmin
       .from('orders')
-      .select(
-        `
-        id,
-        status,
-        email,
-        phone,
-        shipping_name
-      `
-      )
+      .select('id, status, email, phone, shipping_name')
       .eq('id', id)
       .single()
 

@@ -6,7 +6,9 @@ import AdminSubnav from '@/components/AdminSubnav'
 
 export default function HeaderNavSwitcher() {
   const pathname = usePathname()
-  const isAdminPage = pathname.startsWith('/admin')
+
+  const isAdminPage =
+    pathname.startsWith('/admin') && pathname !== '/admin/login'
 
   if (isAdminPage) {
     return <AdminSubnav />

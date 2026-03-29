@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { isAdminFromRequest } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { logAdminActivity } from '@/lib/adminActivity'
 
 export async function PATCH(
   req: Request,
@@ -28,7 +29,7 @@ export async function PATCH(
 
     const { data: product, error: fetchError } = await supabaseAdmin
       .from('products')
-      .select('id, stock')
+      .select('id, name, stock')
       .eq('id', id)
       .single()
 
@@ -59,6 +60,34 @@ export async function PATCH(
         { status: 500 }
       )
     }
+
+    const { error: stockLogError } = await supabaseAdmin
+      .from('stock_adjustments')
+      .insert({
+        product_id: id,
+        admin_user_id: adminUser.id,
+        delta,
+        reason: reason || null,
+      })
+
+    if (stockLogError) {
+      console.error('Failed to write stock adjustment log:', stockLogError)
+    }
+
+    await logAdminActivity({
+      adminUserId: adminUser.id,
+      eventType: 'stock_adjusted',
+      entityType: 'product',
+      entityId: id,
+      summary: `Adjusted stock for ${product.name || 'product'} by ${delta}`,
+      details: {
+        product_name: product.name || null,
+        previous_stock: currentStock,
+        new_stock: nextStock,
+        delta,
+        reason: reason || null,
+      },
+    })
 
     return NextResponse.json({
       success: true,

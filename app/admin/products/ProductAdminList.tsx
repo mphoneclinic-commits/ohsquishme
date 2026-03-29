@@ -15,6 +15,15 @@ type ProductRow = {
   created_at: string | null
 }
 
+type StockAdjustmentRow = {
+  id: string
+  product_id: string
+  admin_user_id: string | null
+  delta: number
+  reason: string | null
+  created_at: string | null
+}
+
 type ProductFormState = {
   name: string
   description: string
@@ -69,10 +78,20 @@ function formatMoney(value: string) {
   return `$${num.toFixed(2)}`
 }
 
+function formatDateTime(value: string | null) {
+  if (!value) return '—'
+  return new Date(value).toLocaleString('en-AU', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  })
+}
+
 export default function ProductAdminList({
   initialProducts,
+  stockAdjustments,
 }: {
   initialProducts: ProductRow[]
+  stockAdjustments: StockAdjustmentRow[]
 }) {
   const safeInitialProducts = useMemo(
     () => (Array.isArray(initialProducts) ? initialProducts : []),
@@ -80,6 +99,8 @@ export default function ProductAdminList({
   )
 
   const [products, setProducts] = useState<ProductRow[]>(safeInitialProducts)
+  const [adjustments, setAdjustments] =
+    useState<StockAdjustmentRow[]>(stockAdjustments || [])
   const [query, setQuery] = useState('')
   const [createForm, setCreateForm] = useState<ProductFormState>(emptyForm)
   const [createImage, setCreateImage] = useState<File | null>(null)
@@ -244,6 +265,13 @@ export default function ProductAdminList({
     }
 
     setProducts((current) => current.filter((product) => product.id !== id))
+    setAdjustments((current) =>
+      current.filter((adjustment) => adjustment.product_id !== id)
+    )
+  }
+
+  function getAdjustmentsForProduct(productId: string) {
+    return adjustments.filter((item) => item.product_id === productId).slice(0, 5)
   }
 
   return (
@@ -429,8 +457,12 @@ export default function ProductAdminList({
               <EditableProductCard
                 key={product.id}
                 product={product}
+                productAdjustments={getAdjustmentsForProduct(product.id)}
                 onSave={handleUpdateProduct}
                 onDelete={handleDeleteProduct}
+                onAdjusted={(adjustment) =>
+                  setAdjustments((current) => [adjustment, ...current])
+                }
               />
             ))
           )}
@@ -457,12 +489,16 @@ function SummaryCard({
 
 function EditableProductCard({
   product,
+  productAdjustments,
   onSave,
   onDelete,
+  onAdjusted,
 }: {
   product: ProductRow
+  productAdjustments: StockAdjustmentRow[]
   onSave: (id: string, updates: Partial<ProductRow>) => Promise<void>
   onDelete: (id: string) => Promise<void>
+  onAdjusted: (adjustment: StockAdjustmentRow) => void
 }) {
   const [form, setForm] = useState<ProductFormState>(() => toFormState(product))
   const [saving, setSaving] = useState(false)
@@ -649,13 +685,36 @@ function EditableProductCard({
       <StockAdjuster
         productId={product.id}
         currentStock={Number(form.stock || 0)}
-        onAdjusted={(nextStock) =>
+        onAdjusted={(nextStock, adjustment) => {
           setForm((current) => ({
             ...current,
             stock: String(nextStock),
           }))
-        }
+          onAdjusted(adjustment)
+        }}
       />
+
+      <div className={styles.historyBlock}>
+        <h3 className={styles.historyTitle}>Recent stock adjustments</h3>
+
+        {productAdjustments.length === 0 ? (
+          <div className={styles.historyEmpty}>No stock history yet.</div>
+        ) : (
+          <div className={styles.historyList}>
+            {productAdjustments.map((item) => (
+              <div key={item.id} className={styles.historyRow}>
+                <div className={styles.historyDelta}>
+                  {item.delta > 0 ? `+${item.delta}` : item.delta}
+                </div>
+                <div className={styles.historyReason}>{item.reason || '—'}</div>
+                <div className={styles.historyDate}>
+                  {formatDateTime(item.created_at)}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </article>
   )
 }
@@ -667,7 +726,7 @@ function StockAdjuster({
 }: {
   productId: string
   currentStock: number
-  onAdjusted: (nextStock: number) => void
+  onAdjusted: (nextStock: number, adjustment: StockAdjustmentRow) => void
 }) {
   const [delta, setDelta] = useState('')
   const [reason, setReason] = useState('')
@@ -700,7 +759,15 @@ function StockAdjuster({
         return
       }
 
-      onAdjusted(Number(data.stock || currentStock))
+      onAdjusted(Number(data.stock || currentStock), {
+        id: crypto.randomUUID(),
+        product_id: productId,
+        admin_user_id: null,
+        delta: parsed,
+        reason: reason || null,
+        created_at: new Date().toISOString(),
+      })
+
       setDelta('')
       setReason('')
     } finally {

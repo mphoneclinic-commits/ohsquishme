@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { isAdminFromRequest } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { logAdminActivity } from '@/lib/adminActivity'
 
 export async function DELETE(
   _req: Request,
@@ -14,6 +15,12 @@ export async function DELETE(
     }
 
     const { id } = await params
+
+    const { data: order } = await supabaseAdmin
+      .from('orders')
+      .select('id, email, status, total')
+      .eq('id', id)
+      .single()
 
     const { error: deleteItemsError } = await supabaseAdmin
       .from('order_items')
@@ -50,6 +57,19 @@ export async function DELETE(
         { status: 500 }
       )
     }
+
+    await logAdminActivity({
+      adminUserId: adminUser.id,
+      eventType: 'order_deleted',
+      entityType: 'order',
+      entityId: id,
+      summary: `Deleted order ${id.slice(0, 8)}`,
+      details: {
+        email: order?.email || null,
+        previous_status: order?.status || null,
+        total: order?.total ?? null,
+      },
+    })
 
     return NextResponse.json({ success: true })
   } catch (error) {

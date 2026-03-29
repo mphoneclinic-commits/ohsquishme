@@ -5,6 +5,7 @@ import {
   sendOrderCompletedNotification,
   sendOrderShippedNotification,
 } from '@/lib/notifications'
+import { logAdminActivity } from '@/lib/adminActivity'
 
 export async function PATCH(
   req: Request,
@@ -28,7 +29,10 @@ export async function PATCH(
         status,
         email,
         phone,
-        shipping_name
+        shipping_name,
+        courier,
+        tracking_number,
+        internal_note
       `
       )
       .eq('id', id)
@@ -81,6 +85,10 @@ export async function PATCH(
     }
 
     const statusChanged = existingOrder.status !== status
+    const courierChanged = existingOrder.courier !== updates.courier
+    const trackingChanged =
+      existingOrder.tracking_number !== updates.tracking_number
+    const noteChanged = existingOrder.internal_note !== updates.internal_note
 
     if (statusChanged && status === 'shipped') {
       await sendOrderShippedNotification({
@@ -101,6 +109,25 @@ export async function PATCH(
         shippingName: updates.shipping_name || existingOrder.shipping_name,
       })
     }
+
+    await logAdminActivity({
+      adminUserId: adminUser.id,
+      eventType: 'order_updated',
+      entityType: 'order',
+      entityId: id,
+      summary: statusChanged
+        ? `Updated order ${id.slice(0, 8)} to ${status}`
+        : `Edited order ${id.slice(0, 8)}`,
+      details: {
+        previous_status: existingOrder.status,
+        new_status: status,
+        courier_changed: courierChanged,
+        tracking_changed: trackingChanged,
+        internal_note_changed: noteChanged,
+        courier: updates.courier,
+        tracking_number: updates.tracking_number,
+      },
+    })
 
     return NextResponse.json({ success: true })
   } catch (error) {

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { isAdminFromRequest } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { stripe } from '@/lib/stripe'
+import { logAdminActivity } from '@/lib/adminActivity'
 
 export async function POST(
   req: Request,
@@ -22,12 +23,15 @@ export async function POST(
 
     const { data: order, error: orderError } = await supabaseAdmin
       .from('orders')
-      .select('id, stripe_session_id, refund_status')
+      .select('id, stripe_session_id, refund_status, email')
       .eq('id', id)
       .single()
 
     if (orderError || !order) {
-      return NextResponse.json({ error: orderError?.message || 'Order not found' }, { status: 404 })
+      return NextResponse.json(
+        { error: orderError?.message || 'Order not found' },
+        { status: 404 }
+      )
     }
 
     if (order.refund_status === 'refunded') {
@@ -45,7 +49,10 @@ export async function POST(
         : session.payment_intent?.id
 
     if (!paymentIntentId) {
-      return NextResponse.json({ error: 'Missing Stripe payment intent' }, { status: 400 })
+      return NextResponse.json(
+        { error: 'Missing Stripe payment intent' },
+        { status: 400 }
+      )
     }
 
     const refund = await stripe.refunds.create({
@@ -63,7 +70,7 @@ export async function POST(
 
         const { data: product } = await supabaseAdmin
           .from('products')
-          .select('stock')
+          .select('stock, name')
           .eq('id', item.product_id)
           .single()
 
@@ -77,14 +84,26 @@ export async function POST(
           })
           .eq('id', item.product_id)
 
-        await supabaseAdmin
-          .from('stock_adjustments')
-          .insert({
-            product_id: item.product_id,
-            admin_user_id: adminUser.id,
+        await supabaseAdmin.from('stock_adjustments').insert({
+          product_id: item.product_id,
+          admin_user_id: adminUser.id,
+          delta: Number(item.quantity || 0),
+          reason: `Refund restock for order ${id}`,
+        })
+
+        await logAdminActivity({
+          adminUserId: adminUser.id,
+          eventType: 'stock_restocked',
+          entityType: 'product',
+          entityId: item.product_id,
+          summary: `Restocked product from refunded order ${id.slice(0, 8)}`,
+          details: {
+            order_id: id,
             delta: Number(item.quantity || 0),
             reason: `Refund restock for order ${id}`,
-          })
+            product_name: product?.name || null,
+          },
+        })
       }
     }
 
@@ -97,17 +116,30 @@ export async function POST(
       })
       .eq('id', id)
 
-    await supabaseAdmin
-      .from('refund_logs')
-      .insert({
-        order_id: id,
-        admin_user_id: adminUser.id,
-        stripe_payment_intent_id: paymentIntentId,
-        amount: 0,
-        refund_type: 'full',
+    await supabaseAdmin.from('refund_logs').insert({
+      order_id: id,
+      admin_user_id: adminUser.id,
+      stripe_payment_intent_id: paymentIntentId,
+      amount: 0,
+      refund_type: 'full',
+      restock,
+      reason,
+    })
+
+    await logAdminActivity({
+      adminUserId: adminUser.id,
+      eventType: 'order_refunded',
+      entityType: 'order',
+      entityId: id,
+      summary: `Refunded order ${id.slice(0, 8)}${restock ? ' and restocked items' : ''}`,
+      details: {
         restock,
         reason,
-      })
+        stripe_payment_intent_id: paymentIntentId,
+        refund_id: refund.id,
+        email: order.email || null,
+      },
+    })
 
     return NextResponse.json({ success: true, refundId: refund.id })
   } catch (error) {

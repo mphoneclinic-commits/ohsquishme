@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { isAdminFromRequest } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { logAdminActivity } from '@/lib/adminActivity'
 
 const ALLOWED_ROLES = new Set(['customer', 'wholesale', 'admin'])
 
@@ -23,6 +24,12 @@ export async function PATCH(
       return NextResponse.json({ error: 'Invalid role' }, { status: 400 })
     }
 
+    const { data: existingProfile } = await supabaseAdmin
+      .from('profiles')
+      .select('id, email, role')
+      .eq('id', id)
+      .single()
+
     const { error } = await supabaseAdmin
       .from('profiles')
       .update({ role })
@@ -31,6 +38,19 @@ export async function PATCH(
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
+
+    await logAdminActivity({
+      adminUserId: adminUser.id,
+      eventType: 'customer_role_updated',
+      entityType: 'customer',
+      entityId: id,
+      summary: `Changed customer role to ${role}`,
+      details: {
+        email: existingProfile?.email || null,
+        previous_role: existingProfile?.role || null,
+        new_role: role,
+      },
+    })
 
     return NextResponse.json({ success: true })
   } catch (error) {

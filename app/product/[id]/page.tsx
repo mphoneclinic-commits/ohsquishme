@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useCart } from '@/components/CartProvider'
@@ -61,7 +62,7 @@ export default function ProductPage() {
       return
     }
 
-    setProduct(data)
+    setProduct(data as Product)
 
     const { data: relatedData, error: relatedError } = await supabase
       .from('products')
@@ -74,7 +75,7 @@ export default function ProductPage() {
       console.error('Related products fetch error:', relatedError)
       setRelatedProducts([])
     } else {
-      setRelatedProducts(relatedData || [])
+      setRelatedProducts((relatedData || []) as Product[])
     }
 
     setLoading(false)
@@ -85,7 +86,7 @@ export default function ProductPage() {
   const stockMessage = useMemo(() => {
     if (!product) return ''
     if (product.stock <= 0) return 'Out of stock'
-    if (product.stock <= 3) return `Low stock — only ${product.stock} left`
+    if (product.stock <= 3) return `Only ${product.stock} left`
     return 'In stock'
   }, [product])
 
@@ -99,7 +100,7 @@ export default function ProductPage() {
   }
 
   function handleAddToCart() {
-    if (!product) return
+    if (!product || product.stock <= 0) return
 
     addItem({
       id: product.id,
@@ -214,6 +215,7 @@ export default function ProductPage() {
               <button
                 type="button"
                 onClick={handleAddToCart}
+                disabled={product.stock <= 0}
                 className={styles.primaryButton}
               >
                 {added
@@ -222,6 +224,10 @@ export default function ProductPage() {
                       effectivePrice * quantity
                     ).toFixed(2)}`}
               </button>
+
+              <p className={styles.micro}>
+                Ships from Australia · Fast dispatch
+              </p>
             </div>
           ) : (
             <button type="button" disabled className={styles.disabledButton}>
@@ -245,7 +251,7 @@ export default function ProductPage() {
               const relatedPrice = getEffectivePrice(item, role)
 
               return (
-                <a
+                <Link
                   key={item.id}
                   href={`/product/${item.id}`}
                   className={styles.relatedCard}
@@ -264,7 +270,7 @@ export default function ProductPage() {
                   <p className={styles.relatedPrice}>
                     ${relatedPrice.toFixed(2)}
                   </p>
-                </a>
+                </Link>
               )
             })}
           </div>

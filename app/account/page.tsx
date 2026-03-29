@@ -13,7 +13,6 @@ type ProfileRow = {
   created_at: string | null
 }
 
-
 type OrderRow = {
   id: string
   email: string | null
@@ -65,26 +64,12 @@ export default async function AccountPage() {
   if (user) {
     const { data: profileData } = await supabaseAdmin
       .from('profiles')
-.select(`
-  id,
-  email,
-  total,
-  status,
-  created_at,
-  paid_at,
-  tracking_number,
-  courier,
-  packed_at,
-  shipped_at,
-  completed_at,
-  shipping_name,
-  shipping_phone,
-  shipping_address_line1,
-  shipping_address_line2,
-  shipping_suburb,
-  shipping_state,
-  shipping_postcode
-`)
+      .select(`
+        id,
+        email,
+        role,
+        created_at
+      `)
       .eq('id', user.id)
       .single()
 
@@ -103,26 +88,27 @@ export default async function AccountPage() {
     if (user.email) {
       const { data: ordersData } = await supabaseAdmin
         .from('orders')
-.select(`
-  id,
-  email,
-  total,
-  status,
-  created_at,
-  paid_at,
-  tracking_number,
-  courier,
-  packed_at,
-  shipped_at,
-  completed_at,
-  shipping_name,
-  shipping_phone,
-  shipping_address_line1,
-  shipping_address_line2,
-  shipping_suburb,
-  shipping_state,
-  shipping_postcode
-`)        .eq('email', user.email)
+        .select(`
+          id,
+          email,
+          total,
+          status,
+          created_at,
+          paid_at,
+          tracking_number,
+          courier,
+          packed_at,
+          shipped_at,
+          completed_at,
+          shipping_name,
+          shipping_phone,
+          shipping_address_line1,
+          shipping_address_line2,
+          shipping_suburb,
+          shipping_state,
+          shipping_postcode
+        `)
+        .eq('email', user.email)
         .order('created_at', { ascending: false })
 
       orders = (ordersData as OrderRow[] | null) ?? []
@@ -147,8 +133,7 @@ export default async function AccountPage() {
           <p className={styles.eyebrow}>Account</p>
           <h1 className={styles.title}>Your account</h1>
           <p className={styles.subtitle}>
-            Sign in to manage your account, see your order history, and check
-            whether wholesale pricing is active.
+            Sign in to manage your account, review orders, and check your wholesale status.
           </p>
         </section>
 

@@ -3,7 +3,7 @@
 }
 
 .shell {
-  max-width: 960px;
+  max-width: 1040px;
   margin: 0 auto;
   display: grid;
   gap: 20px;
@@ -34,7 +34,8 @@
   line-height: 1.6;
 }
 
-.card {
+.card,
+.emptyCard {
   border: 1px solid #eadce3;
   border-radius: 18px;
   background: #fff;
@@ -79,24 +80,33 @@
   font: inherit;
 }
 
-.primaryButton {
+.primaryButton,
+.secondaryButton,
+.primaryButtonLink,
+.secondaryButtonLink {
   padding: 12px 16px;
   border-radius: 12px;
+  font: inherit;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.primaryButton,
+.primaryButtonLink {
   border: 1px solid #111;
   background: #111;
   color: #fff;
   cursor: pointer;
-  font: inherit;
 }
 
-.secondaryButton {
-  padding: 12px 16px;
-  border-radius: 12px;
+.secondaryButton,
+.secondaryButtonLink {
   border: 1px solid #d9ccd3;
   background: #fff;
   color: inherit;
   cursor: pointer;
-  font: inherit;
 }
 
 .successBox {
@@ -218,6 +228,14 @@
   line-height: 1.6;
 }
 
+.ordersHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
 .orderList {
   display: grid;
   gap: 14px;
@@ -318,6 +336,7 @@
   font: inherit;
   resize: vertical;
 }
+
 .orderTimeline {
   display: grid;
   gap: 8px;
@@ -332,11 +351,7 @@
   font-size: 14px;
   color: #443841;
 }
-@media (max-width: 700px) {
-  .twoCol {
-    grid-template-columns: 1fr;
-  }
-}
+
 @media (max-width: 800px) {
   .accountGrid {
     grid-template-columns: 1fr;
@@ -344,6 +359,10 @@
 }
 
 @media (max-width: 700px) {
+  .twoCol {
+    grid-template-columns: 1fr;
+  }
+
   .page {
     padding: 24px 14px 40px;
   }

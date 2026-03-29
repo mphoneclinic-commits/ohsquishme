@@ -73,8 +73,8 @@ function normalizeStockInput(value: string) {
   return value.trim() === '' ? 0 : Number(value)
 }
 
-function formatMoney(value: string) {
-  const num = normalizeMoneyInput(value)
+function formatMoney(value: string | number | null | undefined) {
+  const num = Number(value || 0)
   return `$${num.toFixed(2)}`
 }
 
@@ -187,7 +187,7 @@ export default function ProductAdminList({
 
       const payload = {
         name: trimmedName,
-        description: createForm.description.trim(),
+        description: createForm.description.trim() || null,
         price_retail: normalizeMoneyInput(createForm.price_retail),
         price_wholesale: normalizeMoneyInput(createForm.price_wholesale),
         stock: normalizeStockInput(createForm.stock),
@@ -287,9 +287,10 @@ export default function ProductAdminList({
       <section className={styles.createCard}>
         <div className={styles.sectionHeader}>
           <div>
-            <h2 className={styles.sectionTitle}>Create Product</h2>
+            <p className={styles.sectionEyebrow}>Admin</p>
+            <h2 className={styles.sectionTitle}>Create product</h2>
             <p className={styles.sectionText}>
-              Add a new product to the storefront.
+              Add a new storefront item with image, pricing and stock.
             </p>
           </div>
         </div>
@@ -395,10 +396,6 @@ export default function ProductAdminList({
               </span>
             </label>
 
-            {createImage ? (
-              <div className={styles.message}>Selected: {createImage.name}</div>
-            ) : null}
-
             <label className={styles.checkboxLabel}>
               <input
                 type="checkbox"
@@ -419,7 +416,7 @@ export default function ProductAdminList({
               disabled={creating}
               className={styles.primaryButton}
             >
-              {creating ? 'Creating...' : 'Create Product'}
+              {creating ? 'Creating...' : 'Create product'}
             </button>
 
             {createMessage ? (
@@ -432,9 +429,10 @@ export default function ProductAdminList({
       <section className={styles.listSection}>
         <div className={styles.sectionHeader}>
           <div>
-            <h2 className={styles.sectionTitle}>Existing Products</h2>
+            <p className={styles.sectionEyebrow}>Manage</p>
+            <h2 className={styles.sectionTitle}>Existing products</h2>
             <p className={styles.sectionText}>
-              Update pricing, stock, status, and images.
+              Search, edit pricing, adjust stock and review recent stock history.
             </p>
           </div>
         </div>
@@ -444,7 +442,7 @@ export default function ProductAdminList({
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search name, description, stock, price..."
+            placeholder="Search name, description, stock or price..."
             className={styles.input}
           />
         </div>
@@ -503,6 +501,14 @@ function EditableProductCard({
   const [form, setForm] = useState<ProductFormState>(() => toFormState(product))
   const [saving, setSaving] = useState(false)
 
+  const stockNumber = Number(form.stock || 0)
+  const stockClass =
+    stockNumber <= 0
+      ? styles.stockBadgeOut
+      : stockNumber <= 5
+        ? styles.stockBadgeLow
+        : styles.stockBadgeIn
+
   async function handleSave() {
     const trimmedName = form.name.trim()
 
@@ -545,21 +551,27 @@ function EditableProductCard({
 
         <div className={styles.productContent}>
           <div className={styles.productHeader}>
-            <input
-              type="text"
-              value={form.name}
-              onChange={(e) =>
-                setForm((current) => ({ ...current, name: e.target.value }))
-              }
-              className={styles.nameInput}
-            />
+            <div className={styles.productHeaderText}>
+              <input
+                type="text"
+                value={form.name}
+                onChange={(e) =>
+                  setForm((current) => ({ ...current, name: e.target.value }))
+                }
+                className={styles.nameInput}
+              />
 
-            <span
-              className={
-                form.active ? styles.activeBadge : styles.inactiveBadge
-              }
-            >
-              {form.active ? 'Active' : 'Inactive'}
+              <span className={form.active ? styles.activeBadge : styles.inactiveBadge}>
+                {form.active ? 'Active' : 'Inactive'}
+              </span>
+            </div>
+
+            <span className={stockClass}>
+              {stockNumber <= 0
+                ? 'Out of stock'
+                : stockNumber <= 5
+                  ? `Low stock · ${stockNumber}`
+                  : `In stock · ${stockNumber}`}
             </span>
           </div>
 
@@ -630,6 +642,7 @@ function EditableProductCard({
               }))
             }
             className={styles.textarea}
+            placeholder="Description"
           />
 
           <div className={styles.metaRow}>
@@ -670,7 +683,7 @@ function EditableProductCard({
           disabled={saving}
           className={styles.primaryButton}
         >
-          {saving ? 'Saving...' : 'Save Changes'}
+          {saving ? 'Saving...' : 'Save changes'}
         </button>
 
         <button
@@ -785,6 +798,7 @@ function StockAdjuster({
           placeholder="Stock delta (+5 / -2)"
           className={styles.input}
         />
+
         <input
           type="text"
           value={reason}
@@ -792,13 +806,14 @@ function StockAdjuster({
           placeholder="Reason (damage, manual sale, restock)"
           className={styles.input}
         />
+
         <button
           type="button"
           onClick={handleAdjust}
           disabled={saving}
           className={styles.primaryButton}
         >
-          {saving ? 'Updating...' : 'Adjust Stock'}
+          {saving ? 'Updating...' : 'Adjust stock'}
         </button>
       </div>
     </div>

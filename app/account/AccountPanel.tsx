@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import styles from './account.module.css'
@@ -194,8 +195,7 @@ export default function AccountPanel({
             <div className={styles.infoCard}>
               <span className={styles.infoLabel}>Latest request</span>
               <span className={styles.infoValue}>
-                {wholesaleRequest.business_name} ·{' '}
-                {formatStatus(wholesaleRequest.status)}
+                {wholesaleRequest.business_name} · {formatStatus(wholesaleRequest.status)}
               </span>
             </div>
           ) : null}
@@ -267,13 +267,26 @@ export default function AccountPanel({
       ) : null}
 
       <div className={styles.card}>
-        <p className={styles.sectionEyebrow}>Orders</p>
-        <h2 className={styles.sectionTitle}>Order history</h2>
+        <div className={styles.ordersHeader}>
+          <div>
+            <p className={styles.sectionEyebrow}>Orders</p>
+            <h2 className={styles.sectionTitle}>Order history</h2>
+          </div>
+
+          {orders.length === 0 ? null : (
+            <Link href="/shop" className={styles.secondaryButtonLink}>
+              Continue shopping
+            </Link>
+          )}
+        </div>
 
         {orders.length === 0 ? (
-          <p className={styles.bodyText}>
-            No orders found for this account yet.
-          </p>
+          <div className={styles.emptyCard}>
+            <p>No orders yet.</p>
+            <Link href="/shop" className={styles.primaryButtonLink}>
+              Start shopping
+            </Link>
+          </div>
         ) : (
           <div className={styles.orderList}>
             {orders.map((order) => {
@@ -365,6 +378,17 @@ export default function AccountPanel({
                       </div>
                     ) : null}
                   </div>
+
+                  {order.status === 'shipped' && order.tracking_number ? (
+                    <a
+                      href={`https://track.aftership.com/${order.courier || ''}/${order.tracking_number}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className={styles.primaryButtonLink}
+                    >
+                      Track package
+                    </a>
+                  ) : null}
 
                   <div className={styles.orderItems}>
                     {items.map((item) => (

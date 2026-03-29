@@ -25,9 +25,9 @@
   border-radius: 999px;
   display: grid;
   place-items: center;
-  background: #ecfdf3;
-  color: #067647;
-  border: 1px solid #b7ebcd;
+  background: #fff8e8;
+  color: #9a6700;
+  border: 1px solid #f5d28b;
   font-size: 28px;
   font-weight: 700;
 }

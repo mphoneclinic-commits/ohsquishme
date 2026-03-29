@@ -17,20 +17,25 @@ export default function AdminSubnav() {
 
     async function loadPendingCount() {
       try {
-        const { count, error } = await supabase
-          .from('wholesale_requests')
-          .select('*', { count: 'exact', head: true })
-          .eq('status', 'pending')
+        const res = await fetch('/api/admin/wholesale/pending-count', {
+          method: 'GET',
+          cache: 'no-store',
+        })
+
+        const data = await res.json().catch(() => null)
 
         if (!active) return
 
-        if (error) {
-          console.error('Failed to load pending wholesale count:', error)
+        if (!res.ok) {
+          console.error(
+            'Failed to load pending wholesale count:',
+            data?.error || 'Unknown error'
+          )
           setPendingWholesaleCount(0)
           return
         }
 
-        setPendingWholesaleCount(count ?? 0)
+        setPendingWholesaleCount(Number(data?.count || 0))
       } catch (error) {
         console.error('Failed to load pending wholesale count:', error)
         if (active) setPendingWholesaleCount(0)

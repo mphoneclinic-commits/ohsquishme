@@ -1,6 +1,7 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { createClient } from '@/lib/supabase/client'
 import styles from './wholesale.module.css'
 
 type WholesaleRequestRow = {
@@ -46,6 +47,68 @@ export default function WholesaleAdminPanel({
     'all' | 'pending' | 'approved' | 'rejected'
   >('all')
   const [toast, setToast] = useState('')
+
+  useEffect(() => {
+    const supabase = createClient()
+
+    const wholesaleRequestsChannel = supabase
+      .channel('admin-wholesale-requests-live')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'wholesale_requests',
+        },
+        async () => {
+          const { data, error } = await supabase
+            .from('wholesale_requests')
+            .select(
+              'id, user_id, email, business_name, contact_name, phone, website, notes, status, created_at'
+            )
+            .order('created_at', { ascending: false })
+
+          if (error) {
+            console.error('Failed to refresh wholesale requests:', error)
+            return
+          }
+
+          setRequestRows((data || []) as WholesaleRequestRow[])
+        }
+      )
+      .subscribe()
+
+    const profilesChannel = supabase
+      .channel('admin-wholesale-accounts-live')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'profiles',
+        },
+        async () => {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('id, email, role, created_at')
+            .in('role', ['wholesale', 'admin'])
+            .order('created_at', { ascending: false })
+
+          if (error) {
+            console.error('Failed to refresh wholesale accounts:', error)
+            return
+          }
+
+          setAccountRows((data || []) as WholesaleAccountRow[])
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(wholesaleRequestsChannel)
+      supabase.removeChannel(profilesChannel)
+    }
+  }, [])
 
   const filteredRequests = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -109,37 +172,14 @@ export default function WholesaleAdminPanel({
         body: JSON.stringify({ action }),
       })
 
-      const data = await res.json()
+      const data = await res.json().catch(() => null)
 
       if (!res.ok) {
-        alert(data.error || `Failed to ${action} request`)
+        alert(data?.error || `Failed to ${action} request`)
         return
       }
 
-      const updated = data.request as WholesaleRequestRow
-
-      setRequestRows((current) =>
-        current.map((request) => (request.id === id ? updated : request))
-      )
-
       if (action === 'approve') {
-        setAccountRows((current) => {
-          const exists = current.some(
-            (account) => account.id === updated.user_id
-          )
-          if (exists) return current
-
-          return [
-            {
-              id: updated.user_id,
-              email: updated.email,
-              role: 'wholesale',
-              created_at: new Date().toISOString(),
-            },
-            ...current,
-          ]
-        })
-
         showToast('Request approved')
       } else {
         showToast('Request rejected')
@@ -164,15 +204,21 @@ export default function WholesaleAdminPanel({
         body: JSON.stringify({ role: 'customer' }),
       })
 
-      const data = await res.json()
+      const data = await res.json().catch(() => null)
 
       if (!res.ok) {
-        alert(data.error || 'Failed to update role')
+        alert(data?.error || 'Failed to update role')
         return
       }
 
       setAccountRows((current) =>
         current.filter((account) => account.id !== userId)
+      )
+
+      setRequestRows((current) =>
+        current.filter(
+          (request) => !(request.user_id === userId && request.status === 'approved')
+        )
       )
 
       showToast('Wholesale access removed')
@@ -194,10 +240,10 @@ export default function WholesaleAdminPanel({
         method: 'DELETE',
       })
 
-      const data = await res.json()
+      const data = await res.json().catch(() => null)
 
       if (!res.ok) {
-        alert(data.error || 'Failed to delete request')
+        alert(data?.error || 'Failed to delete request')
         return
       }
 

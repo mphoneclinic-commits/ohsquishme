@@ -1,16 +1,69 @@
 'use client'
 
 import Link from 'next/link'
+import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
 import AdminLogoutButton from './AdminLogoutButton'
 import styles from './AdminSubnav.module.css'
 
-export default function AdminSubnav({
-  pendingWholesaleCount = 0,
-}: {
-  pendingWholesaleCount?: number
-}) {
+export default function AdminSubnav() {
   const pathname = usePathname()
+  const [pendingWholesaleCount, setPendingWholesaleCount] = useState(0)
+
+  useEffect(() => {
+    const supabase = createClient()
+    let active = true
+
+    async function loadPendingCount() {
+      try {
+        const res = await fetch('/api/admin/wholesale/pending-count', {
+          method: 'GET',
+          cache: 'no-store',
+        })
+
+        const data = await res.json().catch(() => null)
+
+        if (!active) return
+
+        if (!res.ok) {
+          console.error(
+            'Failed to load pending wholesale count:',
+            data?.error || 'Unknown error'
+          )
+          setPendingWholesaleCount(0)
+          return
+        }
+
+        setPendingWholesaleCount(Number(data?.count || 0))
+      } catch (error) {
+        console.error('Failed to load pending wholesale count:', error)
+        if (active) setPendingWholesaleCount(0)
+      }
+    }
+
+    loadPendingCount()
+
+    const channel = supabase
+      .channel('admin-wholesale-badge')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'wholesale_requests',
+        },
+        async () => {
+          await loadPendingCount()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      active = false
+      supabase.removeChannel(channel)
+    }
+  }, [])
 
   const isOrders =
     pathname === '/admin/orders' || pathname.startsWith('/admin/orders/')
@@ -20,8 +73,9 @@ export default function AdminSubnav({
     pathname === '/admin/wholesale' || pathname.startsWith('/admin/wholesale/')
   const isCustomers =
     pathname === '/admin/customers' || pathname.startsWith('/admin/customers/')
-const isStorefront =
-  pathname === '/admin/storefront' || pathname.startsWith('/admin/storefront/')
+  const isStorefront =
+    pathname === '/admin/storefront' || pathname.startsWith('/admin/storefront/')
+
   return (
     <nav className={styles.wrap}>
       <div className={styles.inner}>
@@ -44,7 +98,7 @@ const isStorefront =
             href="/admin/wholesale"
             className={`${styles.tab} ${isWholesale ? styles.tabActive : ''}`}
           >
-            Wholesale Accounts
+            Wholesale
             {pendingWholesaleCount > 0 ? (
               <span
                 className={`${styles.badge} ${
@@ -64,13 +118,13 @@ const isStorefront =
           </Link>
         </div>
 
-        <div className={styles.tabs}>
-<Link
-  href="/admin/storefront"
-  className={`${styles.tab} ${isStorefront ? styles.tabActive : ''}`}
->
-  View Store
-</Link>
+        <div className={styles.actions}>
+          <Link
+            href="/admin/storefront"
+            className={`${styles.tab} ${isStorefront ? styles.tabActive : ''}`}
+          >
+            View Store
+          </Link>
           <AdminLogoutButton className={styles.tab} />
         </div>
       </div>

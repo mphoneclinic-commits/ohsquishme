@@ -92,3 +92,35 @@ export async function PATCH(
     )
   }
 }
+
+export async function DELETE(
+  _req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const adminUser = await isAdminFromRequest()
+
+    if (!adminUser) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { id } = await params
+
+    const { error } = await supabaseAdmin
+      .from('wholesale_requests')
+      .delete()
+      .eq('id', id)
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Delete wholesale request error:', error)
+    return NextResponse.json(
+      { error: 'Unexpected server error' },
+      { status: 500 }
+    )
+  }
+}

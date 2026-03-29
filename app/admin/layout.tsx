@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { requireAdmin } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
-import AdminSubnav from '@/components/AdminSubnav'
+import HeaderNavSwitcher from '@/components/HeaderNavSwitcher'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,7 +19,7 @@ export default async function AdminLayout({
 
   return (
     <>
-      <AdminSubnav pendingWholesaleCount={count || 0} />
+      
       {children}
     </>
   )

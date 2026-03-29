@@ -7,8 +7,8 @@ import CartProvider from '@/components/CartProvider'
 import AuthProvider from '@/components/AuthProvider'
 import HeaderNavSwitcher from '@/components/HeaderNavSwitcher'
 import HeaderScrollShell from '@/components/HeaderScrollShell'
-import styles from './layout.module.css'
 import BackToTopButton from '@/components/BackToTopButton'
+import styles from './layout.module.css'
 
 const fredoka = Fredoka({
   subsets: ['latin'],
@@ -29,9 +29,9 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode
-}>) {
+}) {
   return (
     <html lang="en">
       <body className={`${fredoka.variable} ${inter.variable}`}>
@@ -40,13 +40,15 @@ export default function RootLayout({
             <HeaderScrollShell>
               <header className={styles.header}>
                 <div className={styles.headerInner}>
+                  
+                  {/* BRAND */}
                   <Link href="/" className={styles.brand}>
                     <div className={styles.logoWrap}>
                       <Image
                         src="/logo.png"
                         alt="Oh Squish Me logo"
-                        width={68}
-                        height={68}
+                        width={72}
+                        height={72}
                         className={styles.logo}
                         priority
                       />
@@ -60,13 +62,16 @@ export default function RootLayout({
                     </div>
                   </Link>
 
+                  {/* NAV SWITCHER (THIS IS THE KEY) */}
                   <HeaderNavSwitcher />
+
                 </div>
               </header>
             </HeaderScrollShell>
 
             {children}
-    <BackToTopButton />
+
+            <BackToTopButton />
           </CartProvider>
         </AuthProvider>
       </body>

@@ -296,7 +296,7 @@ export default function ProductAdminList({
             <div className={styles.metricsRow}>
               <input
                 type="number"
-                step="0.01"
+                step="0.05"
                 placeholder="Retail price"
                 value={createForm.price_retail}
                 onChange={(e) =>
@@ -310,7 +310,7 @@ export default function ProductAdminList({
 
               <input
                 type="number"
-                step="0.01"
+                step="0.05"
                 placeholder="Wholesale price"
                 value={createForm.price_wholesale}
                 onChange={(e) =>
@@ -532,7 +532,7 @@ function EditableProductCard({
               <span className={styles.metricLabel}>Retail</span>
               <input
                 type="number"
-                step="0.01"
+                step="0.05"
                 value={form.price_retail || ''}
                 onChange={(e) =>
                   setForm((current) => ({
@@ -551,7 +551,7 @@ function EditableProductCard({
               <span className={styles.metricLabel}>Wholesale</span>
               <input
                 type="number"
-                step="0.01"
+                step="0.05"
                 value={form.price_wholesale || ''}
                 onChange={(e) =>
                   setForm((current) => ({

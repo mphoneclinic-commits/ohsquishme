@@ -44,7 +44,7 @@ const isStorefront =
             href="/admin/wholesale"
             className={`${styles.tab} ${isWholesale ? styles.tabActive : ''}`}
           >
-            Wholesale
+            Wholesale Accounts
             {pendingWholesaleCount > 0 ? (
               <span
                 className={`${styles.badge} ${

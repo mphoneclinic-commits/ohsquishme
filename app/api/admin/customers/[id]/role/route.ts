@@ -2,8 +2,10 @@ import { NextResponse } from 'next/server'
 import { isAdminFromRequest } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 
-export async function DELETE(
-  _req: Request,
+const ALLOWED_ROLES = new Set(['customer', 'wholesale', 'admin'])
+
+export async function PATCH(
+  req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -14,10 +16,16 @@ export async function DELETE(
     }
 
     const { id } = await params
+    const body = await req.json()
+    const role = String(body?.role || '').trim()
+
+    if (!ALLOWED_ROLES.has(role)) {
+      return NextResponse.json({ error: 'Invalid role' }, { status: 400 })
+    }
 
     const { error } = await supabaseAdmin
-      .from('wholesale_requests')
-      .delete()
+      .from('profiles')
+      .update({ role })
       .eq('id', id)
 
     if (error) {
@@ -26,7 +34,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Delete wholesale request error:', error)
+    console.error('Customer role update error:', error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Unexpected server error' },
       { status: 500 }

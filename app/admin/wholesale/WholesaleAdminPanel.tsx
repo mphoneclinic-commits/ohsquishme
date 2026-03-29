@@ -90,7 +90,47 @@ export default function WholesaleAdminPanel({
         .includes(q)
     )
   }, [accountRows, query])
+async function handleDeleteRequest(requestId: string) {
+  const confirmed = window.confirm(
+    'Delete this wholesale request record? This cannot be undone.'
+  )
+  if (!confirmed) return
 
+  setBusyId(requestId)
+
+  try {
+    const res = await fetch(`/api/admin/wholesale-requests/${requestId}`, {
+      method: 'DELETE',
+    })
+
+    const data = await res.json()
+
+    if (!res.ok) {
+      alert(data.error || 'Failed to delete request')
+      return
+    }
+
+    setRequestRows((current) =>
+      current.filter((request) => request.id !== requestId)
+    )
+  } finally {
+    setBusyId(null)
+  }
+}
+function SummaryCard({
+  label,
+  value,
+}: {
+  label: string
+  value: number
+}) {
+  return (
+    <div className={styles.summaryCard}>
+      <div className={styles.summaryLabel}>{label}</div>
+      <div className={styles.summaryValue}>{value}</div>
+    </div>
+  )
+}
   async function handleRequestAction(id: string, action: 'approve' | 'reject') {
     setBusyId(id)
 
@@ -350,35 +390,61 @@ export default function WholesaleAdminPanel({
           </div>
 
           <div className={styles.requestList}>
-            {processedRequests.map((request) => (
-              <article key={request.id} className={styles.requestCard}>
-                <div className={styles.requestHeader}>
-                  <div>
-                    <h3 className={styles.requestTitle}>{request.business_name}</h3>
-                    <p className={styles.requestMeta}>
-                      Submitted {formatDate(request.created_at)}
-                    </p>
-                  </div>
+{processedRequests.map((request) => {
+  const isBusy = busyId === request.id || busyId === request.user_id
 
-                  <span
-                    className={
-                      request.status === 'approved'
-                        ? styles.statusApproved
-                        : styles.statusRejected
-                    }
-                  >
-                    {request.status}
-                  </span>
-                </div>
+  return (
+    <article key={request.id} className={styles.requestCard}>
+      <div className={styles.requestHeader}>
+        <div>
+          <h3 className={styles.requestTitle}>{request.business_name}</h3>
+          <p className={styles.requestMeta}>
+            Submitted {formatDate(request.created_at)}
+          </p>
+        </div>
 
-                <div className={styles.infoGrid}>
-                  <InfoCard label="Email" value={request.email || '—'} />
-                  <InfoCard label="Contact" value={request.contact_name || '—'} />
-                  <InfoCard label="Phone" value={request.phone || '—'} />
-                  <InfoCard label="Website" value={request.website || '—'} />
-                </div>
-              </article>
-            ))}
+        <span
+          className={
+            request.status === 'approved'
+              ? styles.statusApproved
+              : styles.statusRejected
+          }
+        >
+          {request.status}
+        </span>
+      </div>
+
+      <div className={styles.infoGrid}>
+        <InfoCard label="Email" value={request.email || '—'} />
+        <InfoCard label="Contact" value={request.contact_name || '—'} />
+        <InfoCard label="Phone" value={request.phone || '—'} />
+        <InfoCard label="Website" value={request.website || '—'} />
+      </div>
+
+      <div className={styles.actionRow}>
+        {request.status === 'approved' ? (
+          <button
+            type="button"
+            onClick={() => handleDowngrade(request.user_id)}
+            disabled={isBusy}
+            className={styles.rejectButton}
+          >
+            {isBusy ? 'Working...' : 'Remove Wholesale Access'}
+          </button>
+        ) : null}
+
+        <button
+          type="button"
+          onClick={() => handleDeleteRequest(request.id)}
+          disabled={isBusy}
+          className={styles.deleteButton}
+        >
+          {isBusy ? 'Working...' : 'Delete Request'}
+        </button>
+      </div>
+    </article>
+  )
+})}
           </div>
         </section>
       ) : null}
@@ -386,20 +452,7 @@ export default function WholesaleAdminPanel({
   )
 }
 
-function SummaryCard({
-  label,
-  value,
-}: {
-  label: string
-  value: number
-}) {
-  return (
-    <div className={styles.summaryCard}>
-      <div className={styles.summaryLabel}>{label}</div>
-      <div className={styles.summaryValue}>{value}</div>
-    </div>
-  )
-}
+
 
 function InfoCard({
   label,

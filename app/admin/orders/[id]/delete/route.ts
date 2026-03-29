@@ -15,18 +15,33 @@ export async function DELETE(
 
     const { id } = await params
 
-    const { error } = await supabaseAdmin
-      .from('wholesale_requests')
+    const { error: deleteItemsError } = await supabaseAdmin
+      .from('order_items')
+      .delete()
+      .eq('order_id', id)
+
+    if (deleteItemsError) {
+      return NextResponse.json(
+        { error: `Failed to delete order items: ${deleteItemsError.message}` },
+        { status: 500 }
+      )
+    }
+
+    const { error: deleteOrderError } = await supabaseAdmin
+      .from('orders')
       .delete()
       .eq('id', id)
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+    if (deleteOrderError) {
+      return NextResponse.json(
+        { error: `Failed to delete order: ${deleteOrderError.message}` },
+        { status: 500 }
+      )
     }
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Delete wholesale request error:', error)
+    console.error('Delete order error:', error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Unexpected server error' },
       { status: 500 }

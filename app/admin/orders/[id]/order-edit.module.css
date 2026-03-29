@@ -83,20 +83,33 @@
 }
 
 .primaryButton,
+.secondaryButton,
 .warningButton,
 .dangerButton,
-.secondaryLink {
+.deleteButton {
   padding: 10px 14px;
   border-radius: 12px;
   font: inherit;
-  text-decoration: none;
   cursor: pointer;
+  transition: all 0.16s ease;
 }
 
 .primaryButton {
   border: 1px solid #111;
   background: #111;
   color: #fff;
+}
+
+.secondaryButton {
+  border: 1px solid #d9ccd3;
+  background: #fff;
+  color: #2d2428;
+}
+
+.secondaryButton:hover {
+  background: #fff8fb;
+  border-color: #e8b8c8;
+  color: #c2185b;
 }
 
 .warningButton {
@@ -110,6 +123,27 @@
   background: #fff4f4;
   color: #b42318;
 }
+
+.deleteButton {
+  border: 1px solid #b42318;
+  background: #b42318;
+  color: #fff;
+}
+
+.deleteButton:hover {
+  background: #8f1c13;
+  border-color: #8f1c13;
+}
+
+.primaryButton:disabled,
+.secondaryButton:disabled,
+.warningButton:disabled,
+.dangerButton:disabled,
+.deleteButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 
 .secondaryLink {
   border: 1px solid #d9ccd3;

@@ -13,6 +13,7 @@ type ProfileRow = {
   created_at: string | null
 }
 
+
 type OrderRow = {
   id: string
   email: string | null
@@ -20,6 +21,18 @@ type OrderRow = {
   status: string | null
   created_at: string | null
   paid_at: string | null
+  tracking_number: string | null
+  courier: string | null
+  packed_at: string | null
+  shipped_at: string | null
+  completed_at: string | null
+  shipping_name: string | null
+  shipping_phone: string | null
+  shipping_address_line1: string | null
+  shipping_address_line2: string | null
+  shipping_suburb: string | null
+  shipping_state: string | null
+  shipping_postcode: string | null
 }
 
 type OrderItemRow = {
@@ -52,7 +65,26 @@ export default async function AccountPage() {
   if (user) {
     const { data: profileData } = await supabaseAdmin
       .from('profiles')
-      .select('id, email, role, created_at')
+.select(`
+  id,
+  email,
+  total,
+  status,
+  created_at,
+  paid_at,
+  tracking_number,
+  courier,
+  packed_at,
+  shipped_at,
+  completed_at,
+  shipping_name,
+  shipping_phone,
+  shipping_address_line1,
+  shipping_address_line2,
+  shipping_suburb,
+  shipping_state,
+  shipping_postcode
+`)
       .eq('id', user.id)
       .single()
 
@@ -71,8 +103,26 @@ export default async function AccountPage() {
     if (user.email) {
       const { data: ordersData } = await supabaseAdmin
         .from('orders')
-        .select('id, email, total, status, created_at, paid_at')
-        .eq('email', user.email)
+.select(`
+  id,
+  email,
+  total,
+  status,
+  created_at,
+  paid_at,
+  tracking_number,
+  courier,
+  packed_at,
+  shipped_at,
+  completed_at,
+  shipping_name,
+  shipping_phone,
+  shipping_address_line1,
+  shipping_address_line2,
+  shipping_suburb,
+  shipping_state,
+  shipping_postcode
+`)        .eq('email', user.email)
         .order('created_at', { ascending: false })
 
       orders = (ordersData as OrderRow[] | null) ?? []

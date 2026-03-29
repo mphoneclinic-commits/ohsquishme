@@ -20,19 +20,89 @@ type ProductRow = {
 export async function POST(req: Request) {
   try {
     const body = await req.json()
-    const { items, email, phone } = body as {
+
+    const {
+      items,
+      email,
+      phone,
+      shipping_name,
+      shipping_phone,
+      shipping_address_line1,
+      shipping_address_line2,
+      shipping_suburb,
+      shipping_state,
+      shipping_postcode,
+      delivery_notes,
+    } = body as {
       items?: CheckoutItem[]
       email?: string
       phone?: string
+      shipping_name?: string
+      shipping_phone?: string
+      shipping_address_line1?: string
+      shipping_address_line2?: string
+      shipping_suburb?: string
+      shipping_state?: string
+      shipping_postcode?: string
+      delivery_notes?: string
     }
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json({ error: 'Cart empty' }, { status: 400 })
     }
 
-    if (!email || !email.trim()) {
+    if (!email?.trim()) {
       return NextResponse.json(
         { error: 'Email is required' },
+        { status: 400 }
+      )
+    }
+
+    if (!phone?.trim()) {
+      return NextResponse.json(
+        { error: 'Phone number is required' },
+        { status: 400 }
+      )
+    }
+
+    if (!shipping_name?.trim()) {
+      return NextResponse.json(
+        { error: 'Shipping name is required' },
+        { status: 400 }
+      )
+    }
+
+    if (!shipping_phone?.trim()) {
+      return NextResponse.json(
+        { error: 'Shipping phone is required' },
+        { status: 400 }
+      )
+    }
+
+    if (!shipping_address_line1?.trim()) {
+      return NextResponse.json(
+        { error: 'Address line 1 is required' },
+        { status: 400 }
+      )
+    }
+
+    if (!shipping_suburb?.trim()) {
+      return NextResponse.json(
+        { error: 'Suburb is required' },
+        { status: 400 }
+      )
+    }
+
+    if (!shipping_state?.trim()) {
+      return NextResponse.json(
+        { error: 'State is required' },
+        { status: 400 }
+      )
+    }
+
+    if (!shipping_postcode?.trim()) {
+      return NextResponse.json(
+        { error: 'Postcode is required' },
         { status: 400 }
       )
     }
@@ -83,20 +153,6 @@ export async function POST(req: Request) {
       }
     }
 
-if (!email?.trim()) {
-  return NextResponse.json(
-    { error: 'Missing email' },
-    { status: 400 }
-  )
-}
-
-if (!phone?.trim()) {
-  return NextResponse.json(
-    { error: 'Missing phone number' },
-    { status: 400 }
-  )
-}
-
     const total = items.reduce((sum, item) => {
       return sum + Number(item.price) * Number(item.quantity)
     }, 0)
@@ -105,7 +161,15 @@ if (!phone?.trim()) {
       .from('orders')
       .insert({
         email: email.trim(),
-	phone: phone?.trim() || null,
+        phone: phone.trim(),
+        shipping_name: shipping_name.trim(),
+        shipping_phone: shipping_phone.trim(),
+        shipping_address_line1: shipping_address_line1.trim(),
+        shipping_address_line2: shipping_address_line2?.trim() || null,
+        shipping_suburb: shipping_suburb.trim(),
+        shipping_state: shipping_state.trim(),
+        shipping_postcode: shipping_postcode.trim(),
+        delivery_notes: delivery_notes?.trim() || null,
         total,
         status: 'pending',
       })
@@ -140,7 +204,14 @@ if (!phone?.trim()) {
       )
     }
 
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL!
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
+
+    if (!siteUrl) {
+      return NextResponse.json(
+        { error: 'Missing NEXT_PUBLIC_SITE_URL' },
+        { status: 500 }
+      )
+    }
 
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
@@ -159,6 +230,12 @@ if (!phone?.trim()) {
       })),
       metadata: {
         order_id: order.id,
+        email: email.trim(),
+        phone: phone.trim(),
+        shipping_name: shipping_name.trim(),
+        shipping_suburb: shipping_suburb.trim(),
+        shipping_state: shipping_state.trim(),
+        shipping_postcode: shipping_postcode.trim(),
       },
     })
 

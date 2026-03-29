@@ -12,6 +12,18 @@ type OrderRow = {
   status: string | null
   created_at: string | null
   paid_at: string | null
+  tracking_number: string | null
+  courier: string | null
+  packed_at: string | null
+  shipped_at: string | null
+  completed_at: string | null
+  shipping_name: string | null
+  shipping_phone: string | null
+  shipping_address_line1: string | null
+  shipping_address_line2: string | null
+  shipping_suburb: string | null
+  shipping_state: string | null
+  shipping_postcode: string | null
 }
 
 type OrderItemRow = {
@@ -108,7 +120,6 @@ export default function AccountPanel({
 
       if (!res.ok) {
         setErrorMessage(data.error || 'Failed to submit wholesale request')
-        setSaving(false)
         return
       }
 
@@ -142,7 +153,9 @@ export default function AccountPanel({
 
             <div className={styles.infoCard}>
               <span className={styles.infoLabel}>Member since</span>
-              <span className={styles.infoValue}>{formatCreatedAt(createdAt)}</span>
+              <span className={styles.infoValue}>
+                {formatCreatedAt(createdAt)}
+              </span>
             </div>
           </div>
 
@@ -173,15 +186,16 @@ export default function AccountPanel({
             {isWholesale
               ? 'Your account is approved for wholesale pricing. Eligible products across the shop will automatically show your wholesale rate.'
               : hasPendingRequest
-              ? 'Your wholesale request is currently pending review.'
-              : 'Want wholesale pricing? Submit a request below and we’ll review your account.'}
+                ? 'Your wholesale request is currently pending review.'
+                : 'Want wholesale pricing? Submit a request below and we’ll review your account.'}
           </p>
 
           {!isWholesale && wholesaleRequest ? (
             <div className={styles.infoCard}>
               <span className={styles.infoLabel}>Latest request</span>
               <span className={styles.infoValue}>
-                {wholesaleRequest.business_name} · {formatStatus(wholesaleRequest.status)}
+                {wholesaleRequest.business_name} ·{' '}
+                {formatStatus(wholesaleRequest.status)}
               </span>
             </div>
           ) : null}
@@ -245,7 +259,9 @@ export default function AccountPanel({
             </button>
 
             {message ? <div className={styles.successBox}>{message}</div> : null}
-            {errorMessage ? <div className={styles.errorBox}>{errorMessage}</div> : null}
+            {errorMessage ? (
+              <div className={styles.errorBox}>{errorMessage}</div>
+            ) : null}
           </form>
         </div>
       ) : null}
@@ -283,6 +299,71 @@ export default function AccountPanel({
                         {formatMoney(order.total)}
                       </strong>
                     </div>
+                  </div>
+
+                  {(order.courier || order.tracking_number) ? (
+                    <div className={styles.infoGrid}>
+                      <div className={styles.infoCard}>
+                        <span className={styles.infoLabel}>Courier</span>
+                        <span className={styles.infoValue}>
+                          {order.courier || '—'}
+                        </span>
+                      </div>
+
+                      <div className={styles.infoCard}>
+                        <span className={styles.infoLabel}>Tracking</span>
+                        <span className={styles.infoValue}>
+                          {order.tracking_number || '—'}
+                        </span>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {(order.shipping_name || order.shipping_address_line1) ? (
+                    <div className={styles.infoCard}>
+                      <span className={styles.infoLabel}>Shipping details</span>
+                      <span className={styles.infoValue}>
+                        {[
+                          order.shipping_name,
+                          order.shipping_phone,
+                          order.shipping_address_line1,
+                          order.shipping_address_line2,
+                          order.shipping_suburb,
+                          order.shipping_state,
+                          order.shipping_postcode,
+                        ]
+                          .filter(Boolean)
+                          .join(', ')}
+                      </span>
+                    </div>
+                  ) : null}
+
+                  <div className={styles.orderTimeline}>
+                    <div className={styles.timelineItem}>
+                      <strong>Placed</strong>
+                      <span>{formatCreatedAt(order.created_at)}</span>
+                    </div>
+
+                    {order.packed_at ? (
+                      <div className={styles.timelineItem}>
+                        <strong>Packed</strong>
+                        <span>{formatCreatedAt(order.packed_at)}</span>
+                      </div>
+                    ) : null}
+
+                    {order.shipped_at ? (
+                      <div className={styles.timelineItem}>
+                        <strong>Shipped</strong>
+                        <span>{formatCreatedAt(order.shipped_at)}</span>
+                      </div>
+                    ) : null}
+
+                    {order.completed_at ? (
+                      <div className={styles.timelineItem}>
+                        <strong>Completed</strong>
+                        <span>{formatCreatedAt(order.completed_at)}</span>
+                      </div>
+                    ) : null}
                   </div>
 
                   <div className={styles.orderItems}>

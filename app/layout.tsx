@@ -8,6 +8,7 @@ import AuthProvider from '@/components/AuthProvider'
 import HeaderNavSwitcher from '@/components/HeaderNavSwitcher'
 import HeaderScrollShell from '@/components/HeaderScrollShell'
 import styles from './layout.module.css'
+import BackToTopButton from '@/components/BackToTopButton'
 
 const fredoka = Fredoka({
   subsets: ['latin'],
@@ -65,6 +66,7 @@ export default function RootLayout({
             </HeaderScrollShell>
 
             {children}
+    <BackToTopButton />
           </CartProvider>
         </AuthProvider>
       </body>

@@ -10,7 +10,7 @@ export default function CartPage() {
     items,
     itemCount,
     subtotal,
-  setItemQuantity,
+    setItemQuantity,
     increaseQty,
     decreaseQty,
     removeItem,
@@ -19,6 +19,15 @@ export default function CartPage() {
 
   const [checkoutEmail, setCheckoutEmail] = useState('')
   const [checkoutPhone, setCheckoutPhone] = useState('')
+
+  const [shippingName, setShippingName] = useState('')
+  const [shippingPhone, setShippingPhone] = useState('')
+  const [shippingAddressLine1, setShippingAddressLine1] = useState('')
+  const [shippingAddressLine2, setShippingAddressLine2] = useState('')
+  const [shippingSuburb, setShippingSuburb] = useState('')
+  const [shippingState, setShippingState] = useState('')
+  const [shippingPostcode, setShippingPostcode] = useState('')
+  const [deliveryNotes, setDeliveryNotes] = useState('')
 
   async function handleCheckout() {
     if (!checkoutEmail.trim()) {
@@ -31,6 +40,36 @@ export default function CartPage() {
       return
     }
 
+    if (!shippingName.trim()) {
+      alert('Please enter the shipping name')
+      return
+    }
+
+    if (!shippingPhone.trim()) {
+      alert('Please enter the shipping phone number')
+      return
+    }
+
+    if (!shippingAddressLine1.trim()) {
+      alert('Please enter address line 1')
+      return
+    }
+
+    if (!shippingSuburb.trim()) {
+      alert('Please enter the suburb')
+      return
+    }
+
+    if (!shippingState.trim()) {
+      alert('Please enter the state')
+      return
+    }
+
+    if (!shippingPostcode.trim()) {
+      alert('Please enter the postcode')
+      return
+    }
+
     const res = await fetch('/api/checkout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -38,6 +77,14 @@ export default function CartPage() {
         items,
         email: checkoutEmail.trim(),
         phone: checkoutPhone.trim(),
+        shipping_name: shippingName.trim(),
+        shipping_phone: shippingPhone.trim(),
+        shipping_address_line1: shippingAddressLine1.trim(),
+        shipping_address_line2: shippingAddressLine2.trim(),
+        shipping_suburb: shippingSuburb.trim(),
+        shipping_state: shippingState.trim(),
+        shipping_postcode: shippingPostcode.trim(),
+        delivery_notes: deliveryNotes.trim(),
       }),
     })
 
@@ -102,50 +149,48 @@ export default function CartPage() {
                     </button>
                   </div>
 
-<div className={styles.qtyRow}>
-  <span>Qty</span>
+                  <div className={styles.qtyRow}>
+                    <span>Qty</span>
 
-  <button
-    type="button"
-    onClick={() => decreaseQty(item.id)}
-    className={styles.qtyButton}
-  >
-    -
-  </button>
+                    <button
+                      type="button"
+                      onClick={() => decreaseQty(item.id)}
+                      className={styles.qtyButton}
+                    >
+                      -
+                    </button>
 
-  <input
-    type="number"
-    min="1"
-    step="1"
-    value={item.quantity}
-    onChange={(e) => {
-      const value = e.target.value
+                    <input
+                      type="number"
+                      min="1"
+                      step="1"
+                      value={item.quantity}
+                      onChange={(e) => {
+                        const value = e.target.value
 
-      if (value === '') {
-        setItemQuantity(item.id, 1)
-        return
-      }
+                        if (value === '') {
+                          setItemQuantity(item.id, 1)
+                          return
+                        }
 
-      const nextQty = Math.max(1, Math.floor(Number(value) || 1))
-      setItemQuantity(item.id, nextQty)
-    }}
-    className={styles.qtyInput}
-  />
+                        const nextQty = Math.max(1, Math.floor(Number(value) || 1))
+                        setItemQuantity(item.id, nextQty)
+                      }}
+                      className={styles.qtyInput}
+                    />
 
-  <button
-    type="button"
-    onClick={() => increaseQty(item.id)}
-    className={styles.qtyButton}
-  >
-    +
-  </button>
+                    <button
+                      type="button"
+                      onClick={() => increaseQty(item.id)}
+                      className={styles.qtyButton}
+                    >
+                      +
+                    </button>
 
-  <div className={styles.lineTotal}>
-    ${(item.price * item.quantity).toFixed(2)}
-  </div>
-</div>
-
-
+                    <div className={styles.lineTotal}>
+                      ${(item.price * item.quantity).toFixed(2)}
+                    </div>
+                  </div>
                 </div>
               </article>
             ))}
@@ -176,8 +221,73 @@ export default function CartPage() {
                 type="tel"
                 value={checkoutPhone}
                 onChange={(e) => setCheckoutPhone(e.target.value)}
-                placeholder="Phone number (e.g. 04xxxxxxx)"
+                placeholder="Phone number"
                 className={styles.input}
+              />
+
+              <input
+                type="text"
+                value={shippingName}
+                onChange={(e) => setShippingName(e.target.value)}
+                placeholder="Shipping full name"
+                className={styles.input}
+              />
+
+              <input
+                type="tel"
+                value={shippingPhone}
+                onChange={(e) => setShippingPhone(e.target.value)}
+                placeholder="Shipping phone"
+                className={styles.input}
+              />
+
+              <input
+                type="text"
+                value={shippingAddressLine1}
+                onChange={(e) => setShippingAddressLine1(e.target.value)}
+                placeholder="Address line 1"
+                className={styles.input}
+              />
+
+              <input
+                type="text"
+                value={shippingAddressLine2}
+                onChange={(e) => setShippingAddressLine2(e.target.value)}
+                placeholder="Address line 2 (optional)"
+                className={styles.input}
+              />
+
+              <input
+                type="text"
+                value={shippingSuburb}
+                onChange={(e) => setShippingSuburb(e.target.value)}
+                placeholder="Suburb"
+                className={styles.input}
+              />
+
+              <div className={styles.twoCol}>
+                <input
+                  type="text"
+                  value={shippingState}
+                  onChange={(e) => setShippingState(e.target.value)}
+                  placeholder="State"
+                  className={styles.input}
+                />
+
+                <input
+                  type="text"
+                  value={shippingPostcode}
+                  onChange={(e) => setShippingPostcode(e.target.value)}
+                  placeholder="Postcode"
+                  className={styles.input}
+                />
+              </div>
+
+              <textarea
+                value={deliveryNotes}
+                onChange={(e) => setDeliveryNotes(e.target.value)}
+                placeholder="Delivery notes (optional)"
+                className={styles.textarea}
               />
             </div>
 

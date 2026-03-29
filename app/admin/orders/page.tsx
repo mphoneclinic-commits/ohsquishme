@@ -2,7 +2,6 @@ import Link from 'next/link'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdmin } from '@/lib/auth'
 import OrderStatusForm from './OrderStatusForm'
-
 import styles from './orders.module.css'
 
 export const dynamic = 'force-dynamic'
@@ -49,6 +48,7 @@ const STATUS_OPTIONS = [
   'shipped',
   'completed',
   'cancelled',
+  'closed',
 ]
 
 export default async function AdminOrdersPage({
@@ -76,7 +76,6 @@ export default async function AdminOrdersPage({
     return (
       <main className={styles.page}>
         <div className={styles.shell}>
-     
           <div className={styles.emptyCard}>
             Failed to load orders: {ordersError.message}
           </div>
@@ -100,7 +99,6 @@ export default async function AdminOrdersPage({
       return (
         <main className={styles.page}>
           <div className={styles.shell}>
-
             <div className={styles.emptyCard}>
               Failed to load order items: {itemsError.message}
             </div>
@@ -120,10 +118,12 @@ export default async function AdminOrdersPage({
     itemsByOrderId.set(item.order_id, existing)
   }
 
-  const filteredOrders = orders.filter((order) => {
-    const matchesStatus = statusFilter
-      ? (order.status || '').toLowerCase() === statusFilter
-      : true
+const filteredOrders = orders.filter((order) => {
+  const normalizedStatus = (order.status || '').toLowerCase()
+
+  const matchesStatus = statusFilter
+    ? normalizedStatus === statusFilter
+    : normalizedStatus !== 'closed'
 
     const haystack = [
       order.id,
@@ -148,13 +148,13 @@ export default async function AdminOrdersPage({
     shipped: orders.filter((o) => o.status === 'shipped').length,
     stock_issue: orders.filter((o) => o.status === 'stock_issue').length,
     payment_failed: orders.filter((o) => o.status === 'payment_failed').length,
+  closed: orders.filter((o) => o.status === 'closed').length,
+
   }
 
   return (
     <main className={styles.page}>
       <div className={styles.shell}>
-      
-
         <div className={styles.topBar}>
           <div>
             <p className={styles.eyebrow}>Admin</p>
@@ -169,6 +169,7 @@ export default async function AdminOrdersPage({
           <SummaryCard label="Shipped" value={counts.shipped} />
           <SummaryCard label="Stock Issues" value={counts.stock_issue} />
           <SummaryCard label="Payment Failed" value={counts.payment_failed} />
+<SummaryCard label="Closed" value={counts.closed} />
         </section>
 
         <form method="GET" className={styles.filterForm}>

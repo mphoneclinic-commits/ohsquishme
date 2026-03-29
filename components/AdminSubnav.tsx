@@ -26,14 +26,16 @@ export default function AdminSubnav() {
 
         if (!active) return
 
-        if (!res.ok) {
-          console.error(
-            'Failed to load pending wholesale count:',
-            data?.error || 'Unknown error'
-          )
-          setPendingWholesaleCount(0)
-          return
-        }
+if (!res.ok) {
+  if (res.status !== 401) {
+    console.error(
+      'Failed to load pending wholesale count:',
+      data?.error || 'Unknown error'
+    )
+  }
+  setPendingWholesaleCount(0)
+  return
+}
 
         setPendingWholesaleCount(Number(data?.count || 0))
       } catch (error) {
@@ -75,6 +77,8 @@ export default function AdminSubnav() {
     pathname === '/admin/customers' || pathname.startsWith('/admin/customers/')
   const isStorefront =
     pathname === '/admin/storefront' || pathname.startsWith('/admin/storefront/')
+const isActivity =
+  pathname === '/admin/activity' || pathname.startsWith('/admin/activity/')
 
   return (
     <nav className={styles.wrap}>
@@ -116,6 +120,13 @@ export default function AdminSubnav() {
           >
             Customers
           </Link>
+
+<Link
+  href="/admin/activity"
+  className={`${styles.tab} ${isActivity ? styles.tabActive : ''}`}
+>
+  Activity
+</Link>
         </div>
 
         <div className={styles.actions}>

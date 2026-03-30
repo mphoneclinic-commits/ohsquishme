@@ -37,6 +37,9 @@ export default function CartPage() {
   const [shippingPostcode, setShippingPostcode] = useState('')
   const [deliveryNotes, setDeliveryNotes] = useState('')
 
+  const [notifySms, setNotifySms] = useState(true)
+  const [notifyEmail, setNotifyEmail] = useState(true)
+
   const [saving, setSaving] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
 
@@ -102,6 +105,11 @@ export default function CartPage() {
       return
     }
 
+    if (!notifySms && !notifyEmail) {
+      setErrorMessage('Please select at least one order update method.')
+      return
+    }
+
     setSaving(true)
 
     try {
@@ -120,6 +128,8 @@ export default function CartPage() {
           shipping_state: state,
           shipping_postcode: postcode,
           delivery_notes: deliveryNotes.trim(),
+          notify_sms: notifySms,
+          notify_email: notifyEmail,
         }),
       })
 
@@ -260,7 +270,9 @@ export default function CartPage() {
                         </div>
 
                         <div className={styles.lineTotal}>
-                          {formatMoney(Number(item.price || 0) * Number(item.quantity || 0))}
+                          {formatMoney(
+                            Number(item.price || 0) * Number(item.quantity || 0)
+                          )}
                         </div>
                       </div>
                     </div>
@@ -360,6 +372,48 @@ export default function CartPage() {
                 />
               </div>
             </div>
+
+            <div className={styles.card}>
+              <div className={styles.sectionHeader}>
+                <div>
+                  <p className={styles.sectionEyebrow}>Updates</p>
+                  <h2 className={styles.sectionTitle}>Order notifications</h2>
+                  <p className={styles.sectionText}>
+                    Choose how you want to receive order updates after payment.
+                  </p>
+                </div>
+              </div>
+
+              <div className={styles.notificationOptions}>
+                <label className={styles.notificationOption}>
+                  <input
+                    type="checkbox"
+                    checked={notifySms}
+                    onChange={(e) => setNotifySms(e.target.checked)}
+                  />
+                  <div>
+                    <div className={styles.notificationTitle}>SMS updates</div>
+                    <div className={styles.notificationText}>
+                      Receive order confirmations and shipping updates by text.
+                    </div>
+                  </div>
+                </label>
+
+                <label className={styles.notificationOption}>
+                  <input
+                    type="checkbox"
+                    checked={notifyEmail}
+                    onChange={(e) => setNotifyEmail(e.target.checked)}
+                  />
+                  <div>
+                    <div className={styles.notificationTitle}>Email updates</div>
+                    <div className={styles.notificationText}>
+                      Receive order confirmations and shipping updates by email.
+                    </div>
+                  </div>
+                </label>
+              </div>
+            </div>
           </section>
 
           <aside className={styles.rightColumn}>
@@ -382,6 +436,19 @@ export default function CartPage() {
                   <span>Shipping</span>
                   <span>{estimatedShippingText}</span>
                 </div>
+
+                <div className={styles.summaryRow}>
+                  <span>Notifications</span>
+                  <span>
+                    {notifySms && notifyEmail
+                      ? 'SMS + Email'
+                      : notifySms
+                        ? 'SMS only'
+                        : notifyEmail
+                          ? 'Email only'
+                          : 'None selected'}
+                  </span>
+                </div>
               </div>
 
               <div className={styles.totalRow}>
@@ -392,7 +459,7 @@ export default function CartPage() {
               <div className={styles.trustBox}>
                 <div className={styles.trustItem}>Secure Stripe checkout</div>
                 <div className={styles.trustItem}>Fast dispatch from Australia</div>
-                <div className={styles.trustItem}>Order updates by email and SMS</div>
+                <div className={styles.trustItem}>Choose SMS, email, or both</div>
               </div>
 
               {errorMessage ? (

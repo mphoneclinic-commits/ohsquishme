@@ -339,3 +339,50 @@
     grid-template-columns: 1fr;
   }
 }
+.sectionText {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: #7a6f76;
+}
+
+.notificationOptions {
+  display: grid;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.notificationOption {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px;
+  border: 1px solid #eadce3;
+  border-radius: 14px;
+  background: #fffdfd;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.notificationOption:hover {
+  border-color: #e8b8c8;
+  background: #fff7fb;
+}
+
+.notificationOption input {
+  margin-top: 4px;
+  accent-color: #ff6fa5;
+  cursor: pointer;
+}
+
+.notificationTitle {
+  font-weight: 600;
+  font-size: 14px;
+  color: #4b3b42;
+}
+
+.notificationText {
+  font-size: 13px;
+  color: #7a6f76;
+  margin-top: 2px;
+  line-height: 1.4;
+}

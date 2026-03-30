@@ -2,7 +2,10 @@ import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { stripe } from '@/lib/stripe'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
-import { sendOrderSMS } from '@/lib/sms/sendOrderSMS'
+import {
+  sendAdminNewOrderNotification,
+  sendOrderPlacedNotification,
+} from '@/lib/notifications'
 
 export async function POST(req: Request) {
   const signature = req.headers.get('stripe-signature')
@@ -62,56 +65,85 @@ export async function POST(req: Request) {
           )
         }
 
-if (data?.ok === false) {
-  console.error('process_paid_order returned failure:', data)
+        if (data?.ok === false) {
+          console.error('process_paid_order returned failure:', data)
 
-  await supabaseAdmin
-    .from('orders')
-    .update({
-      status: 'stock_issue',
-      stripe_session_id: sessionId,
-    })
-    .eq('id', orderId)
+          await supabaseAdmin
+            .from('orders')
+            .update({
+              status: 'stock_issue',
+              stripe_session_id: sessionId,
+            })
+            .eq('id', orderId)
 
-  return NextResponse.json(
-    { error: data.reason || 'Stock processing failed' },
-    { status: 409 }
-  )
-}
+          return NextResponse.json(
+            { error: data.reason || 'Stock processing failed' },
+            { status: 409 }
+          )
+        }
 
-// ✅ LOAD ORDER (this is what you're missing)
-const { data: order, error: orderError } = await supabaseAdmin
-  .from('orders')
-  .select('id, phone, sms_sent_at')
-  .eq('id', orderId)
-  .single()
+        const { data: order, error: orderError } = await supabaseAdmin
+          .from('orders')
+          .select(
+            'id, email, phone, shipping_name, total, sms_sent_at, email_sent_at, notify_sms, notify_email'
+          )
+          .eq('id', orderId)
+          .single()
 
-if (orderError || !order) {
-  console.error('Failed to load order for SMS:', orderError)
-  break
-}
+        if (orderError || !order) {
+          console.error('Failed to load order for notifications:', orderError)
+          break
+        }
 
-// ✅ SEND SMS (only once)
-if (order.phone && !order.sms_sent_at) {
-  try {
-    await sendOrderSMS({
-      phone: order.phone,
-      orderId: order.id,
-    })
+        const shouldSendSms =
+          order.notify_sms === true &&
+          !!order.phone?.trim() &&
+          !order.sms_sent_at
 
-    await supabaseAdmin
-      .from('orders')
-      .update({
-        sms_sent_at: new Date().toISOString(),
-      })
-      .eq('id', orderId)
+        const shouldSendEmail =
+          order.notify_email === true &&
+          !!order.email?.trim() &&
+          !order.email_sent_at
 
-  } catch (smsError) {
-    console.error('SMS failed:', smsError)
-  }
-}
+        if (shouldSendSms || shouldSendEmail) {
+          try {
+            await sendOrderPlacedNotification({
+              orderId: order.id,
+              email: order.email,
+              phone: order.phone,
+              shippingName: order.shipping_name,
+              notifySms: shouldSendSms,
+              notifyEmail: shouldSendEmail,
+            })
 
-break
+            await supabaseAdmin
+              .from('orders')
+              .update({
+                sms_sent_at: shouldSendSms ? new Date().toISOString() : order.sms_sent_at,
+                email_sent_at: shouldSendEmail
+                  ? new Date().toISOString()
+                  : order.email_sent_at,
+              })
+              .eq('id', orderId)
+          } catch (notificationError) {
+            console.error('Order placed notification failed:', notificationError)
+          }
+        }
+
+        try {
+          await sendAdminNewOrderNotification({
+            orderId: order.id,
+            customerEmail: order.email,
+            customerPhone: order.phone,
+            shippingName: order.shipping_name,
+            total: order.total,
+          })
+        } catch (adminNotificationError) {
+          console.error(
+            'Admin new order notification failed:',
+            adminNotificationError
+          )
+        }
 
         break
       }

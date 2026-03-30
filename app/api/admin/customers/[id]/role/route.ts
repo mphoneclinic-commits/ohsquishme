@@ -24,11 +24,18 @@ export async function PATCH(
       return NextResponse.json({ error: 'Invalid role' }, { status: 400 })
     }
 
-    const { data: existingProfile } = await supabaseAdmin
-      .from('profiles')
-      .select('id, email, role')
-      .eq('id', id)
-      .single()
+    const { data: existingProfile, error: existingProfileError } =
+      await supabaseAdmin
+        .from('profiles')
+        .select('id, email, role')
+        .eq('id', id)
+        .single()
+
+    if (existingProfileError || !existingProfile) {
+      return NextResponse.json({ error: 'Customer not found' }, { status: 404 })
+    }
+
+    const previousRole = existingProfile.role
 
     const { error } = await supabaseAdmin
       .from('profiles')
@@ -39,18 +46,39 @@ export async function PATCH(
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    await logAdminActivity({
-      adminUserId: adminUser.id,
-      eventType: 'customer_role_updated',
-      entityType: 'customer',
-      entityId: id,
-      summary: `Changed customer role to ${role}`,
-      details: {
-        email: existingProfile?.email || null,
-        previous_role: existingProfile?.role || null,
-        new_role: role,
-      },
-    })
+    if (previousRole === 'wholesale' && role === 'customer') {
+      await supabaseAdmin
+        .from('wholesale_requests')
+        .update({ status: 'revoked' })
+        .eq('user_id', id)
+        .eq('status', 'approved')
+
+      await logAdminActivity({
+        adminUserId: adminUser.id,
+        eventType: 'wholesale_access_removed',
+        entityType: 'user',
+        entityId: id,
+        summary: 'Removed wholesale access',
+        details: {
+          previous_role: previousRole,
+          new_role: role,
+          email: existingProfile.email || null,
+        },
+      })
+    } else {
+      await logAdminActivity({
+        adminUserId: adminUser.id,
+        eventType: 'customer_role_updated',
+        entityType: 'user',
+        entityId: id,
+        summary: `Updated customer role to ${role}`,
+        details: {
+          previous_role: previousRole,
+          new_role: role,
+          email: existingProfile.email || null,
+        },
+      })
+    }
 
     return NextResponse.json({ success: true })
   } catch (error) {

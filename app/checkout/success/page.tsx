@@ -45,14 +45,16 @@ function SuccessContent() {
           <div className={styles.infoCard}>
             <span className={styles.infoLabel}>Order updates</span>
             <span className={styles.infoValue}>
-              You’ll receive order updates by email, and shipping details where available.
+              You’ll receive updates using the notification method you selected at
+              checkout.
             </span>
           </div>
 
           <div className={styles.infoCard}>
             <span className={styles.infoLabel}>Need wholesale pricing?</span>
             <span className={styles.infoValue}>
-              You can apply through your account if you’d like access to wholesale pricing.
+              You can apply through your account if you’d like access to wholesale
+              pricing.
             </span>
           </div>
 
@@ -77,9 +79,9 @@ function SuccessContent() {
         <div className={styles.helpBox}>
           <strong>Heads up</strong>
           <p>
-            If you do not see your order in your account straight away, give it a moment
-            and refresh the page. Order confirmation and shipping updates can take a short
-            time to appear.
+            If you do not see your order in your account straight away, give it a
+            moment and refresh the page. Order confirmation and shipping updates can
+            take a short time to appear.
           </p>
         </div>
       </section>

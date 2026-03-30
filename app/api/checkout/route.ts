@@ -33,6 +33,8 @@ export async function POST(req: Request) {
       shipping_state,
       shipping_postcode,
       delivery_notes,
+      notify_sms,
+      notify_email,
     } = body as {
       items?: CheckoutItem[]
       email?: string
@@ -45,6 +47,8 @@ export async function POST(req: Request) {
       shipping_state?: string
       shipping_postcode?: string
       delivery_notes?: string
+      notify_sms?: boolean
+      notify_email?: boolean
     }
 
     if (!items || !Array.isArray(items) || items.length === 0) {
@@ -103,6 +107,16 @@ export async function POST(req: Request) {
     if (!shipping_postcode?.trim()) {
       return NextResponse.json(
         { error: 'Postcode is required' },
+        { status: 400 }
+      )
+    }
+
+    const wantsSms = notify_sms !== false
+    const wantsEmail = notify_email !== false
+
+    if (!wantsSms && !wantsEmail) {
+      return NextResponse.json(
+        { error: 'Select at least one notification method' },
         { status: 400 }
       )
     }
@@ -170,6 +184,8 @@ export async function POST(req: Request) {
         shipping_state: shipping_state.trim(),
         shipping_postcode: shipping_postcode.trim(),
         delivery_notes: delivery_notes?.trim() || null,
+        notify_sms: wantsSms,
+        notify_email: wantsEmail,
         total,
         status: 'pending',
       })
@@ -236,6 +252,8 @@ export async function POST(req: Request) {
         shipping_suburb: shipping_suburb.trim(),
         shipping_state: shipping_state.trim(),
         shipping_postcode: shipping_postcode.trim(),
+        notify_sms: wantsSms ? 'true' : 'false',
+        notify_email: wantsEmail ? 'true' : 'false',
       },
     })
 

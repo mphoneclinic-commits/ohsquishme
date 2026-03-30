@@ -374,7 +374,7 @@ export default function WholesaleAdminPanel({
         ) : (
           <div className={styles.requestList}>
             {pendingRequests.map((request) => {
-              const isBusy = busyId !== null
+            const isBusy = busyId === request.id
 
               return (
                 <article key={request.id} className={styles.requestCard}>
@@ -451,7 +451,7 @@ export default function WholesaleAdminPanel({
         ) : (
           <div className={styles.accountList}>
             {filteredAccounts.map((account) => {
-              const isBusy = busyId !== null
+              const isBusy = busyId === account.id
 
               return (
                 <article key={account.id} className={styles.accountCard}>
@@ -513,7 +513,7 @@ export default function WholesaleAdminPanel({
 
           <div className={styles.requestList}>
             {processedRequests.map((request) => {
-              const isBusy = busyId !== null
+              const isBusy = busyId === request.id
 
               return (
                 <article key={request.id} className={styles.requestCard}>

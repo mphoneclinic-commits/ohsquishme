@@ -68,10 +68,12 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 18px;
+  align-items: stretch;
 }
 
 .card {
   display: grid;
+  grid-template-rows: auto 1fr;
   text-decoration: none;
   color: inherit;
   border: 1px solid #eadce3;
@@ -83,6 +85,7 @@
     transform 0.18s ease,
     box-shadow 0.18s ease,
     border-color 0.18s ease;
+  height: 100%;
 }
 
 .card:hover {
@@ -151,12 +154,21 @@
 .cardBody {
   padding: 14px;
   display: grid;
+  grid-template-rows: 1fr auto;
+  gap: 14px;
+  min-height: 0;
+}
+
+.cardTop {
+  display: grid;
   gap: 10px;
+  min-height: 0;
 }
 
 .cardTitle {
   font-size: 18px;
   margin: 0;
+  line-height: 1.2;
 }
 
 .cardText {
@@ -164,7 +176,16 @@
   color: #665962;
   line-height: 1.5;
   font-size: 14px;
-  min-height: 42px;
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: calc(14px * 1.5 * 5);
+}
+
+.cardFooter {
+  display: grid;
+  gap: 12px;
 }
 
 .cardBottom {
@@ -184,6 +205,7 @@
   font-size: 13px;
   font-weight: 600;
   color: #c2185b;
+  white-space: nowrap;
 }
 
 .quickAddButton {
@@ -236,5 +258,10 @@
 
   .toolbar {
     grid-template-columns: 1fr;
+  }
+
+  .cardText {
+    -webkit-line-clamp: 4;
+    min-height: calc(14px * 1.5 * 4);
   }
 }

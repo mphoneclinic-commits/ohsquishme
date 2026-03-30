@@ -19,6 +19,11 @@ type Product = {
 
 type SortMode = 'newest' | 'price_low' | 'price_high' | 'name'
 
+function getCardDescription(description: string | null) {
+  const text = (description || 'Cute squishy collectible.').trim()
+  return text
+}
+
 export default function ShopPage() {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
@@ -191,38 +196,40 @@ export default function ShopPage() {
                 </div>
 
                 <div className={styles.cardBody}>
-                  <h2 className={styles.cardTitle}>{product.name}</h2>
+                  <div className={styles.cardTop}>
+                    <h2 className={styles.cardTitle}>{product.name}</h2>
 
-                  {product.description ? (
-                    <p className={styles.cardText}>{product.description}</p>
-                  ) : (
-                    <p className={styles.cardText}>Cute squishy collectible.</p>
-                  )}
-
-                  <div className={styles.cardBottom}>
-                    <p className={styles.price}>
-                      ${Number(product.price_retail).toFixed(2)}
+                    <p className={styles.cardText}>
+                      {getCardDescription(product.description)}
                     </p>
-
-                    <span className={styles.cardLink}>
-                      View product
-                    </span>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={(event) => handleQuickAdd(event, product)}
-                    disabled={isOut}
-                    className={`${styles.quickAddButton} ${
-                      wasAdded ? styles.quickAddButtonAdded : ''
-                    } ${isOut ? styles.quickAddButtonDisabled : ''}`}
-                  >
-                    {isOut
-                      ? 'Out of stock'
-                      : wasAdded
-                        ? 'Added to cart'
-                        : 'Quick add'}
-                  </button>
+                  <div className={styles.cardFooter}>
+                    <div className={styles.cardBottom}>
+                      <p className={styles.price}>
+                        ${Number(product.price_retail).toFixed(2)}
+                      </p>
+
+                      <span className={styles.cardLink}>
+                        View product
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={(event) => handleQuickAdd(event, product)}
+                      disabled={isOut}
+                      className={`${styles.quickAddButton} ${
+                        wasAdded ? styles.quickAddButtonAdded : ''
+                      } ${isOut ? styles.quickAddButtonDisabled : ''}`}
+                    >
+                      {isOut
+                        ? 'Out of stock'
+                        : wasAdded
+                          ? 'Added to cart'
+                          : 'Quick add'}
+                    </button>
+                  </div>
                 </div>
               </Link>
             )

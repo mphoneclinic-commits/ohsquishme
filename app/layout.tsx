@@ -57,7 +57,7 @@ export default function RootLayout({
                     <div className={styles.brandText}>
                       <span className={styles.brandTitle}>Oh Squish Me</span>
                       <span className={styles.brandSub}>
-                        cute squishies & gifts
+                        Cute, soft &amp; oh-so-satisfying
                       </span>
                     </div>
                   </Link>

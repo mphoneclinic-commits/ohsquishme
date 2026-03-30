@@ -160,15 +160,23 @@ export default function AccountPanel({
             </div>
           </div>
 
-          <div className={styles.actionRow}>
-            <button
-              type="button"
-              onClick={handleSignOut}
-              className={styles.secondaryButton}
-            >
-              Sign out
-            </button>
-          </div>
+<div className={styles.actionRow}>
+  {role === 'admin' ? (
+    <a href="/admin/orders" className={styles.primaryButtonLink}>
+      Open admin dashboard
+    </a>
+  ) : null}
+
+  <button
+    type="button"
+    onClick={handleSignOut}
+    className={styles.secondaryButton}
+  >
+    Sign out
+  </button>
+</div>          
+
+
         </div>
 
         <div className={styles.card}>

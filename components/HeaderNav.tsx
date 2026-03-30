@@ -10,6 +10,7 @@ export default function HeaderNav() {
 
   const isHome = pathname === '/'
   const isShop = pathname === '/shop' || pathname.startsWith('/product/')
+  const isAbout = pathname === '/about'
   const isAccount = pathname === '/account'
 
   return (
@@ -27,6 +28,13 @@ export default function HeaderNav() {
           className={`${styles.navLink} ${isShop ? styles.navLinkActive : ''}`}
         >
           Shop
+        </Link>
+
+        <Link
+          href="/about"
+          className={`${styles.navLink} ${isAbout ? styles.navLinkActive : ''}`}
+        >
+          About
         </Link>
 
         <Link

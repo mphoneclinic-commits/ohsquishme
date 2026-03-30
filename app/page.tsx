@@ -1,169 +1,95 @@
+'use client'
+
 import Link from 'next/link'
-import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { useEffect, useState } from 'react'
+import { supabase } from '@/lib/supabase'
+import { useCart } from '@/components/CartProvider'
 import styles from './home.module.css'
 
-export const dynamic = 'force-dynamic'
-
-type ProductRow = {
+type Product = {
   id: string
   name: string
-  description: string | null
   price_retail: number
   image_url: string | null
-  stock: number | null
-  active: boolean
-  created_at: string | null
+  stock: number
+  active?: boolean
+  description?: string | null
 }
 
-function formatMoney(value: number | string | null) {
-  return `$${Number(value || 0).toFixed(2)}`
-}
+export default function HomePage() {
+  const [products, setProducts] = useState<Product[]>([])
+  const [addedMap, setAddedMap] = useState<Record<string, boolean>>({})
+  const { addItem } = useCart()
 
-export default async function HomePage() {
-  const { data, error } = await supabaseAdmin
-    .from('products')
-    .select(
-      'id, name, description, price_retail, image_url, stock, active, created_at'
-    )
-    .eq('active', true)
-    .order('created_at', { ascending: false })
-    .limit(4)
+  useEffect(() => {
+    fetchProducts()
+  }, [])
 
-  const featuredProducts = ((error ? [] : data) || []) as ProductRow[]
+  async function fetchProducts() {
+    const { data, error } = await supabase
+      .from('products')
+      .select('*')
+      .eq('active', true)
+      .order('created_at', { ascending: false })
+      .limit(6)
 
-  const heroProduct = featuredProducts[0] || null
+    if (error) {
+      console.error('Failed to load featured products:', error)
+      setProducts([])
+      return
+    }
+
+    setProducts((data || []) as Product[])
+  }
+
+  function handleAdd(product: Product) {
+    if (product.stock <= 0) return
+
+    addItem({
+      id: product.id,
+      name: product.name,
+      price: product.price_retail,
+      image_url: product.image_url,
+      quantity: 1,
+    })
+
+    setAddedMap((current) => ({ ...current, [product.id]: true }))
+
+    window.setTimeout(() => {
+      setAddedMap((current) => ({ ...current, [product.id]: false }))
+    }, 1200)
+  }
 
   return (
     <main className={styles.page}>
       <section className={styles.hero}>
-        <div className={styles.heroContent}>
-          <p className={styles.eyebrow}>Oh Squish Me</p>
+        <h1>Oh Squish Me 💖</h1>
+        <p>Cute, soft &amp; oh-so-satisfying</p>
 
-          <h1 className={styles.heroTitle}>
-            Cute squishies, gift-ready picks and a cleaner shopping flow
-          </h1>
+        <div className={styles.heroActions}>
+          <Link href="/shop" className={styles.cta}>
+            Shop Now
+          </Link>
 
-          <p className={styles.heroText}>
-            Browse adorable collectibles, check stock clearly, and move through
-            checkout without clutter. Wholesale access is available for approved
-            accounts.
-          </p>
-
-          <div className={styles.heroActions}>
-            <Link href="/shop" className={styles.primaryLink}>
-              Shop now
-            </Link>
-
-            <Link href="/account" className={styles.secondaryLink}>
-              Account & wholesale
-            </Link>
-          </div>
-
-          <div className={styles.heroPoints}>
-            <div className={styles.pointCard}>
-              <strong>Fast dispatch</strong>
-              <span>Orders usually packed within 24 hours</span>
-            </div>
-
-            <div className={styles.pointCard}>
-              <strong>Ships from Australia</strong>
-              <span>Local handling and easier support</span>
-            </div>
-
-            <div className={styles.pointCard}>
-              <strong>Wholesale ready</strong>
-              <span>Apply through your customer account</span>
-            </div>
-          </div>
-        </div>
-
-        <div className={styles.heroVisual}>
-          {heroProduct ? (
-            <Link href={`/product/${heroProduct.id}`} className={styles.heroProductCard}>
-              <div className={styles.heroImageArea}>
-                {Number(heroProduct.stock || 0) <= 0 ? (
-                  <span className={styles.outBadge}>Out of stock</span>
-                ) : Number(heroProduct.stock || 0) <= 3 ? (
-                  <span className={styles.lowBadge}>Low stock</span>
-                ) : null}
-
-                {heroProduct.image_url ? (
-                  <img
-                    src={heroProduct.image_url}
-                    alt={heroProduct.name}
-                    className={styles.heroImage}
-                  />
-                ) : (
-                  <div className={styles.heroImagePlaceholder}>No image</div>
-                )}
-              </div>
-
-              <div className={styles.heroProductBody}>
-                <h2 className={styles.heroProductTitle}>{heroProduct.name}</h2>
-                <p className={styles.heroProductText}>
-                  {heroProduct.description || 'Cute collectible squishy.'}
-                </p>
-                <div className={styles.heroProductBottom}>
-                  <strong className={styles.heroProductPrice}>
-                    {formatMoney(heroProduct.price_retail)}
-                  </strong>
-                  <span className={styles.heroProductCta}>View product</span>
-                </div>
-              </div>
-            </Link>
-          ) : (
-            <div className={styles.heroImagePlaceholder}>Oh Squish Me</div>
-          )}
-        </div>
-      </section>
-
-      <section className={styles.trustStrip}>
-        <div className={styles.trustItem}>
-          <strong>Secure checkout</strong>
-          <span>Stripe-powered payment flow</span>
-        </div>
-
-        <div className={styles.trustItem}>
-          <strong>Order updates</strong>
-          <span>Email and shipping progress where available</span>
-        </div>
-
-        <div className={styles.trustItem}>
-          <strong>Clear stock signals</strong>
-          <span>See low stock and sold out status before checkout</span>
-        </div>
-      </section>
-
-      <section className={styles.featureSection}>
-        <div className={styles.sectionHeader}>
-          <div>
-            <p className={styles.sectionEyebrow}>Featured</p>
-            <h2 className={styles.sectionTitle}>Fresh picks from the shop</h2>
-          </div>
-
-          <Link href="/shop" className={styles.inlineLink}>
-            View all products
+          <Link href="/about" className={styles.ctaSecondary}>
+            About Me
           </Link>
         </div>
+      </section>
 
-        {featuredProducts.length === 0 ? (
-          <div className={styles.emptyCard}>
-            No active products are showing yet.
-          </div>
-        ) : (
-          <div className={styles.productGrid}>
-            {featuredProducts.map((product) => {
-              const isOut = Number(product.stock || 0) <= 0
-              const isLow =
-                Number(product.stock || 0) > 0 && Number(product.stock || 0) <= 3
+      <section className={styles.section}>
+        <h2>Featured Squishies</h2>
 
-              return (
-                <Link
-                  key={product.id}
-                  href={`/product/${product.id}`}
-                  className={styles.productCard}
-                >
-                  <div className={styles.productImageArea}>
+        <div className={styles.grid}>
+          {products.map((product) => {
+            const added = addedMap[product.id]
+            const isOut = product.stock <= 0
+            const isLow = product.stock > 0 && product.stock <= 3
+
+            return (
+              <div key={product.id} className={styles.card}>
+                <Link href={`/product/${product.id}`} className={styles.cardLinkWrap}>
+                  <div className={styles.imageArea}>
                     {isOut ? (
                       <span className={styles.outBadge}>Out of stock</span>
                     ) : isLow ? (
@@ -171,76 +97,54 @@ export default async function HomePage() {
                     ) : null}
 
                     {product.image_url ? (
-                      <img
-                        src={product.image_url}
-                        alt={product.name}
-                        className={styles.productImage}
-                      />
+                      <img src={product.image_url} alt={product.name} />
                     ) : (
-                      <div className={styles.productImagePlaceholder}>No image</div>
+                      <div className={styles.imagePlaceholder}>No image</div>
                     )}
                   </div>
 
-                  <div className={styles.productBody}>
-                    <h3 className={styles.productTitle}>{product.name}</h3>
-                    <p className={styles.productText}>
-                      {product.description || 'Cute collectible squishy.'}
-                    </p>
-
-                    <div className={styles.productBottom}>
-                      <strong className={styles.productPrice}>
-                        {formatMoney(product.price_retail)}
-                      </strong>
-                      <span className={styles.productCta}>View product</span>
-                    </div>
-                  </div>
+                  <h3>{product.name}</h3>
+                  <p>${product.price_retail.toFixed(2)}</p>
                 </Link>
-              )
-            })}
-          </div>
-        )}
-      </section>
 
-      <section className={styles.splitSection}>
-        <div className={styles.infoPanel}>
-          <p className={styles.sectionEyebrow}>Store experience</p>
-          <h2 className={styles.sectionTitle}>Simple, consistent and easier to trust</h2>
-          <p className={styles.panelText}>
-            The storefront and admin now use the same product language — cleaner
-            cards, clearer stock signals, and less visual clutter. That makes the
-            whole system easier to manage and easier to shop.
-          </p>
-
-          <div className={styles.infoList}>
-            <div className={styles.infoListItem}>
-              Consistent product image presentation
-            </div>
-            <div className={styles.infoListItem}>
-              Matching low stock / out of stock badges
-            </div>
-            <div className={styles.infoListItem}>
-              Cleaner flow from product to cart to checkout
-            </div>
-          </div>
+                <button
+                  type="button"
+                  onClick={() => handleAdd(product)}
+                  disabled={isOut}
+                  className={`${styles.addBtn} ${
+                    added ? styles.added : ''
+                  } ${isOut ? styles.addDisabled : ''}`}
+                >
+                  {isOut ? 'Out of stock' : added ? 'Added ✓' : 'Add to cart'}
+                </button>
+              </div>
+            )
+          })}
         </div>
 
-        <div className={styles.infoPanel}>
-          <p className={styles.sectionEyebrow}>Wholesale</p>
-          <h2 className={styles.sectionTitle}>Apply for wholesale pricing</h2>
-          <p className={styles.panelText}>
-            Approved wholesale accounts can access wholesale pricing across eligible
-            products. Apply through your account and we’ll review your request.
+        <Link href="/shop" className={styles.link}>
+          View all products →
+        </Link>
+      </section>
+
+      <section className={styles.about}>
+        <div className={styles.aboutInner}>
+          <h2>From one mumma to another 💖</h2>
+
+          <p>
+            I’m a proud new mum building Oh Squish Me between nap times and late
+            nights. What started as a small idea quickly became something I
+            genuinely fell in love with.
           </p>
 
-          <div className={styles.panelActions}>
-            <Link href="/account" className={styles.primaryLink}>
-              Apply via account
-            </Link>
+          <p>
+            Every squishy is handmade with care to bring comfort, fun, and a
+            little moment of calm.
+          </p>
 
-            <Link href="/shop" className={styles.secondaryLink}>
-              Browse products
-            </Link>
-          </div>
+          <Link href="/about" className={styles.ctaSecondary}>
+            Read my story →
+          </Link>
         </div>
       </section>
     </main>

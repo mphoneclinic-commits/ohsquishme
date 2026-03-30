@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
+import { useCart } from '@/components/CartProvider'
 import styles from './shop.module.css'
 
 type Product = {
@@ -24,6 +25,9 @@ export default function ShopPage() {
   const [errorMessage, setErrorMessage] = useState('')
   const [search, setSearch] = useState('')
   const [sortMode, setSortMode] = useState<SortMode>('newest')
+  const [addedMap, setAddedMap] = useState<Record<string, boolean>>({})
+
+  const { addItem } = useCart()
 
   useEffect(() => {
     fetchProducts()
@@ -80,6 +84,36 @@ export default function ShopPage() {
     return list
   }, [products, search, sortMode])
 
+  function handleQuickAdd(
+    event: React.MouseEvent<HTMLButtonElement>,
+    product: Product
+  ) {
+    event.preventDefault()
+    event.stopPropagation()
+
+    if (Number(product.stock || 0) <= 0) return
+
+    addItem({
+      id: product.id,
+      name: product.name,
+      price: Number(product.price_retail || 0),
+      image_url: product.image_url,
+      quantity: 1,
+    })
+
+    setAddedMap((current) => ({
+      ...current,
+      [product.id]: true,
+    }))
+
+    window.setTimeout(() => {
+      setAddedMap((current) => ({
+        ...current,
+        [product.id]: false,
+      }))
+    }, 1200)
+  }
+
   return (
     <main className={styles.page}>
       <section className={styles.hero}>
@@ -128,6 +162,7 @@ export default function ShopPage() {
           {filteredProducts.map((product) => {
             const isOut = Number(product.stock || 0) <= 0
             const isLow = Number(product.stock || 0) > 0 && Number(product.stock || 0) <= 3
+            const wasAdded = !!addedMap[product.id]
 
             return (
               <Link
@@ -173,6 +208,21 @@ export default function ShopPage() {
                       View product
                     </span>
                   </div>
+
+                  <button
+                    type="button"
+                    onClick={(event) => handleQuickAdd(event, product)}
+                    disabled={isOut}
+                    className={`${styles.quickAddButton} ${
+                      wasAdded ? styles.quickAddButtonAdded : ''
+                    } ${isOut ? styles.quickAddButtonDisabled : ''}`}
+                  >
+                    {isOut
+                      ? 'Out of stock'
+                      : wasAdded
+                        ? 'Added to cart'
+                        : 'Quick add'}
+                  </button>
                 </div>
               </Link>
             )

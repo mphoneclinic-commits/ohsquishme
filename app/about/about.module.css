@@ -1,0 +1,92 @@
+.page {
+  padding: 32px 20px 56px;
+}
+
+.shell {
+  max-width: 960px;
+  margin: 0 auto;
+  display: grid;
+  gap: 20px;
+}
+
+.hero {
+  display: grid;
+  gap: 8px;
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: #7a6f76;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-brand), Arial, sans-serif;
+  font-size: 2.3rem;
+  color: #2d2428;
+}
+
+.subtitle {
+  margin: 0;
+  color: #665962;
+  line-height: 1.6;
+  max-width: 720px;
+}
+
+.storyCard,
+.highlightCard {
+  border: 1px solid #eadce3;
+  border-radius: 18px;
+  background: #fff;
+  padding: 22px;
+  box-shadow: 0 4px 14px rgba(30, 18, 24, 0.03);
+}
+
+.storyCard {
+  display: grid;
+  gap: 16px;
+}
+
+.storyCard p {
+  margin: 0;
+  line-height: 1.8;
+  color: #5a4a50;
+}
+
+.highlightCard {
+  display: grid;
+  gap: 10px;
+  background: linear-gradient(135deg, #fff7fa, #fffdfd);
+}
+
+.highlight {
+  margin: 0;
+  font-weight: 700;
+  color: #d63384;
+  font-size: 1.05rem;
+}
+
+.tagline {
+  margin: 0;
+  color: #665962;
+  line-height: 1.7;
+  font-weight: 600;
+}
+
+@media (max-width: 700px) {
+  .page {
+    padding: 24px 14px 40px;
+  }
+
+  .title {
+    font-size: 2rem;
+  }
+
+  .storyCard,
+  .highlightCard {
+    padding: 18px;
+  }
+}

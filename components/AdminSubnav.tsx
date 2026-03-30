@@ -26,16 +26,16 @@ export default function AdminSubnav() {
 
         if (!active) return
 
-if (!res.ok) {
-  if (res.status !== 401) {
-    console.error(
-      'Failed to load pending wholesale count:',
-      data?.error || 'Unknown error'
-    )
-  }
-  setPendingWholesaleCount(0)
-  return
-}
+        if (!res.ok) {
+          if (res.status !== 401) {
+            console.error(
+              'Failed to load pending wholesale count:',
+              data?.error || 'Unknown error'
+            )
+          }
+          setPendingWholesaleCount(0)
+          return
+        }
 
         setPendingWholesaleCount(Number(data?.count || 0))
       } catch (error) {
@@ -77,11 +77,11 @@ if (!res.ok) {
     pathname === '/admin/customers' || pathname.startsWith('/admin/customers/')
   const isStorefront =
     pathname === '/admin/storefront' || pathname.startsWith('/admin/storefront/')
-const isActivity =
-  pathname === '/admin/activity' || pathname.startsWith('/admin/activity/')
+  const isActivity =
+    pathname === '/admin/activity' || pathname.startsWith('/admin/activity/')
 
   return (
-    <nav className={styles.wrap}>
+    <nav className={styles.wrap} aria-label="Admin navigation">
       <div className={styles.inner}>
         <div className={styles.tabs}>
           <Link
@@ -102,7 +102,7 @@ const isActivity =
             href="/admin/wholesale"
             className={`${styles.tab} ${isWholesale ? styles.tabActive : ''}`}
           >
-            Wholesale
+            <span>Wholesale</span>
             {pendingWholesaleCount > 0 ? (
               <span
                 className={`${styles.badge} ${
@@ -121,22 +121,25 @@ const isActivity =
             Customers
           </Link>
 
-<Link
-  href="/admin/activity"
-  className={`${styles.tab} ${isActivity ? styles.tabActive : ''}`}
->
-  Activity
-</Link>
+          <Link
+            href="/admin/activity"
+            className={`${styles.tab} ${isActivity ? styles.tabActive : ''}`}
+          >
+            Activity
+          </Link>
         </div>
 
         <div className={styles.actions}>
           <Link
             href="/admin/storefront"
-            className={`${styles.tab} ${isStorefront ? styles.tabActive : ''}`}
+            className={`${styles.tab} ${styles.tabSecondary} ${
+              isStorefront ? styles.tabActive : ''
+            }`}
           >
             View Store
           </Link>
-          <AdminLogoutButton className={styles.tab} />
+
+          <AdminLogoutButton className={`${styles.tab} ${styles.tabSecondary}`} />
         </div>
       </div>
     </nav>

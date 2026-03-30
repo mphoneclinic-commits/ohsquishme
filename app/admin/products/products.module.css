@@ -185,7 +185,7 @@
 
 .nameInput {
   width: 100%;
-  min-width: 220px;
+  min-width: 700px;
   padding: 0;
   border: 0;
   background: transparent;
@@ -194,7 +194,12 @@
   font-size: 1.7rem;
   line-height: 1.1;
   color: #2d2428;
+ white-space: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
+
+
 
 .activeBadge,
 .inactiveBadge,

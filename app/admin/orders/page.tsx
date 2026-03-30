@@ -15,6 +15,8 @@ type OrderRow = {
   created_at: string | null
   paid_at: string | null
   stripe_session_id: string | null
+  refund_status: string | null
+  refunded_at: string | null
 }
 
 type OrderItemRow = {
@@ -38,6 +40,38 @@ function formatDate(value: string | null) {
   })
 }
 
+function hoursSince(value: string | null) {
+  if (!value) return null
+  const created = new Date(value).getTime()
+  const now = Date.now()
+  return Math.floor((now - created) / (1000 * 60 * 60))
+}
+
+function isSameDay(value: string | null, target: Date) {
+  if (!value) return false
+  const date = new Date(value)
+  return (
+    date.getFullYear() === target.getFullYear() &&
+    date.getMonth() === target.getMonth() &&
+    date.getDate() === target.getDate()
+  )
+}
+
+function startOfWeek(date: Date) {
+  const copy = new Date(date)
+  const day = copy.getDay()
+  const diff = day === 0 ? -6 : 1 - day
+  copy.setDate(copy.getDate() + diff)
+  copy.setHours(0, 0, 0, 0)
+  return copy
+}
+
+function isThisWeek(value: string | null, weekStart: Date, now: Date) {
+  if (!value) return false
+  const date = new Date(value)
+  return date >= weekStart && date <= now
+}
+
 const STATUS_OPTIONS = [
   'pending',
   'awaiting_payment',
@@ -51,12 +85,32 @@ const STATUS_OPTIONS = [
   'closed',
 ]
 
+const FILTER_OPTIONS = [
+  { value: '', label: 'All filters' },
+  { value: 'failed', label: 'Failed / Cancelled' },
+  { value: 'refunded', label: 'Refunded' },
+]
+
+const PRIORITY_OPTIONS = [
+  { value: '', label: 'All priorities' },
+  { value: 'overdue', label: 'Overdue (24h+)' },
+]
+
+const RANGE_OPTIONS = [
+  { value: '', label: 'All time' },
+  { value: 'today', label: 'Today' },
+  { value: 'week', label: 'This week' },
+]
+
 export default async function AdminOrdersPage({
   searchParams,
 }: {
   searchParams?: Promise<{
     q?: string
     status?: string
+    filter?: string
+    priority?: string
+    range?: string
   }>
 }) {
   await requireAdmin()
@@ -64,11 +118,14 @@ export default async function AdminOrdersPage({
   const params = (await searchParams) || {}
   const q = (params.q || '').trim().toLowerCase()
   const statusFilter = (params.status || '').trim().toLowerCase()
+  const filter = (params.filter || '').trim().toLowerCase()
+  const priority = (params.priority || '').trim().toLowerCase()
+  const range = (params.range || '').trim().toLowerCase()
 
   const { data: ordersData, error: ordersError } = await supabaseAdmin
     .from('orders')
     .select(
-      'id, email, phone, total, status, created_at, paid_at, stripe_session_id'
+      'id, email, phone, total, status, created_at, paid_at, stripe_session_id, refund_status, refunded_at'
     )
     .order('created_at', { ascending: false })
 
@@ -118,12 +175,37 @@ export default async function AdminOrdersPage({
     itemsByOrderId.set(item.order_id, existing)
   }
 
-const filteredOrders = orders.filter((order) => {
-  const normalizedStatus = (order.status || '').toLowerCase()
+  const now = new Date()
+  const weekStart = startOfWeek(now)
 
-  const matchesStatus = statusFilter
-    ? normalizedStatus === statusFilter
-    : normalizedStatus !== 'closed'
+  const filteredOrders = orders.filter((order) => {
+    const normalizedStatus = (order.status || '').toLowerCase()
+    const ageHours = hoursSince(order.created_at)
+
+    const matchesStatus = statusFilter
+      ? normalizedStatus === statusFilter
+      : normalizedStatus !== 'closed'
+
+    const matchesFilter =
+      filter === 'failed'
+        ? normalizedStatus === 'payment_failed' || normalizedStatus === 'cancelled'
+        : filter === 'refunded'
+          ? (order.refund_status || '').toLowerCase() === 'refunded'
+          : true
+
+    const matchesPriority =
+      priority === 'overdue'
+        ? ['pending', 'awaiting_payment', 'paid', 'packed'].includes(
+            normalizedStatus
+          ) && ageHours !== null && ageHours >= 24
+        : true
+
+    const matchesRange =
+      range === 'today'
+        ? isSameDay(order.created_at, now)
+        : range === 'week'
+          ? isThisWeek(order.created_at, weekStart, now)
+          : true
 
     const haystack = [
       order.id,
@@ -138,7 +220,13 @@ const filteredOrders = orders.filter((order) => {
 
     const matchesQuery = q ? haystack.includes(q) : true
 
-    return matchesStatus && matchesQuery
+    return (
+      matchesStatus &&
+      matchesFilter &&
+      matchesPriority &&
+      matchesRange &&
+      matchesQuery
+    )
   })
 
   const counts = {
@@ -148,8 +236,7 @@ const filteredOrders = orders.filter((order) => {
     shipped: orders.filter((o) => o.status === 'shipped').length,
     stock_issue: orders.filter((o) => o.status === 'stock_issue').length,
     payment_failed: orders.filter((o) => o.status === 'payment_failed').length,
-  closed: orders.filter((o) => o.status === 'closed').length,
-
+    closed: orders.filter((o) => o.status === 'closed').length,
   }
 
   return (
@@ -169,7 +256,7 @@ const filteredOrders = orders.filter((order) => {
           <SummaryCard label="Shipped" value={counts.shipped} />
           <SummaryCard label="Stock Issues" value={counts.stock_issue} />
           <SummaryCard label="Payment Failed" value={counts.payment_failed} />
-<SummaryCard label="Closed" value={counts.closed} />
+          <SummaryCard label="Closed" value={counts.closed} />
         </section>
 
         <form method="GET" className={styles.filterForm}>
@@ -190,6 +277,42 @@ const filteredOrders = orders.filter((order) => {
             {STATUS_OPTIONS.map((status) => (
               <option key={status} value={status}>
                 {status}
+              </option>
+            ))}
+          </select>
+
+          <select
+            name="filter"
+            defaultValue={filter}
+            className={styles.select}
+          >
+            {FILTER_OPTIONS.map((option) => (
+              <option key={option.value || 'all'} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+
+          <select
+            name="priority"
+            defaultValue={priority}
+            className={styles.select}
+          >
+            {PRIORITY_OPTIONS.map((option) => (
+              <option key={option.value || 'all'} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+
+          <select
+            name="range"
+            defaultValue={range}
+            className={styles.select}
+          >
+            {RANGE_OPTIONS.map((option) => (
+              <option key={option.value || 'all'} value={option.value}>
+                {option.label}
               </option>
             ))}
           </select>

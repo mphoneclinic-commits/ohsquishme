@@ -20,17 +20,20 @@ export default function AdminSubnav() {
         const res = await fetch('/api/admin/wholesale/pending-count', {
           method: 'GET',
           cache: 'no-store',
-        })
+        }).catch(() => null)
+
+        if (!active || !res) {
+          setPendingWholesaleCount(0)
+          return
+        }
 
         const data = await res.json().catch(() => null)
-
-        if (!active) return
 
         if (!res.ok) {
           if (res.status !== 401) {
             console.error(
               'Failed to load pending wholesale count:',
-              data?.error || 'Unknown error'
+              data?.error || `HTTP ${res.status}`
             )
           }
           setPendingWholesaleCount(0)
@@ -67,6 +70,7 @@ export default function AdminSubnav() {
     }
   }, [])
 
+  const isDashboard = pathname === '/admin'
   const isOrders =
     pathname === '/admin/orders' || pathname.startsWith('/admin/orders/')
   const isProducts =
@@ -85,22 +89,37 @@ export default function AdminSubnav() {
       <div className={styles.inner}>
         <div className={styles.tabs}>
           <Link
+            href="/admin"
+            className={`${styles.tab} ${styles.tabDashboard} ${
+              isDashboard ? styles.tabDashboardActive : ''
+            }`}
+          >
+            Dashboard
+          </Link>
+
+          <Link
             href="/admin/orders"
-            className={`${styles.tab} ${isOrders ? styles.tabActive : ''}`}
+            className={`${styles.tab} ${styles.tabPrimary} ${
+              isOrders ? styles.tabActive : ''
+            }`}
           >
             Orders
           </Link>
 
           <Link
             href="/admin/products"
-            className={`${styles.tab} ${isProducts ? styles.tabActive : ''}`}
+            className={`${styles.tab} ${styles.tabPrimary} ${
+              isProducts ? styles.tabActive : ''
+            }`}
           >
             Products
           </Link>
 
           <Link
             href="/admin/wholesale"
-            className={`${styles.tab} ${isWholesale ? styles.tabActive : ''}`}
+            className={`${styles.tab} ${styles.tabPrimary} ${
+              isWholesale ? styles.tabActive : ''
+            }`}
           >
             <span>Wholesale</span>
             {pendingWholesaleCount > 0 ? (
@@ -116,30 +135,36 @@ export default function AdminSubnav() {
 
           <Link
             href="/admin/customers"
-            className={`${styles.tab} ${isCustomers ? styles.tabActive : ''}`}
+            className={`${styles.tab} ${styles.tabPrimary} ${
+              isCustomers ? styles.tabActive : ''
+            }`}
           >
             Customers
           </Link>
 
           <Link
             href="/admin/activity"
-            className={`${styles.tab} ${isActivity ? styles.tabActive : ''}`}
+            className={`${styles.tab} ${styles.tabMeta} ${
+              isActivity ? styles.tabMetaActive : ''
+            }`}
           >
             Activity
           </Link>
         </div>
 
+        <div className={styles.divider} />
+
         <div className={styles.actions}>
           <Link
             href="/admin/storefront"
-            className={`${styles.tab} ${styles.tabSecondary} ${
-              isStorefront ? styles.tabActive : ''
+            className={`${styles.tab} ${styles.tabUtility} ${
+              isStorefront ? styles.tabUtilityActive : ''
             }`}
           >
             View Store
           </Link>
 
-          <AdminLogoutButton className={`${styles.tab} ${styles.tabSecondary}`} />
+          <AdminLogoutButton className={`${styles.tab} ${styles.tabUtility}`} />
         </div>
       </div>
     </nav>

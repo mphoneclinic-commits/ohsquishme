@@ -162,8 +162,8 @@ export default function AccountPanel({
 
 <div className={styles.actionRow}>
   {role === 'admin' ? (
-    <a href="/admin/orders" className={styles.primaryButtonLink}>
-      Open admin dashboard
+    <a href="/admin" className={styles.primaryButtonLink}>
+      Admin dashboard
     </a>
   ) : null}
 

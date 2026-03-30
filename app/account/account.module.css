@@ -357,6 +357,20 @@
     grid-template-columns: 1fr;
   }
 }
+.adminBox {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #fff0f5;
+  border: 1px solid #f3c6d6;
+}
+
+.adminLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: #c2185b;
+  margin-bottom: 6px;
+}
 
 @media (max-width: 700px) {
   .twoCol {

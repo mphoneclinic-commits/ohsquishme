@@ -26,8 +26,19 @@ type StockAdjustmentRow = {
   created_at: string | null
 }
 
-export default async function AdminProductsPage() {
+export default async function AdminProductsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{
+    q?: string
+    filter?: string
+  }>
+}) {
   await requireAdmin()
+
+  const params = (await searchParams) || {}
+  const initialQuery = (params.q || '').trim()
+  const initialFilter = (params.filter || '').trim().toLowerCase()
 
   const { data: productsData, error: productsError } = await supabaseAdmin
     .from('products')
@@ -78,6 +89,8 @@ export default async function AdminProductsPage() {
         <ProductAdminList
           initialProducts={products}
           stockAdjustments={stockAdjustments}
+          initialQuery={initialQuery}
+          initialFilter={initialFilter}
         />
       </div>
     </main>

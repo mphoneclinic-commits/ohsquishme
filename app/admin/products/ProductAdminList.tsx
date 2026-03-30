@@ -1,6 +1,7 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import styles from './products.module.css'
 
 type ProductRow = {
@@ -33,6 +34,8 @@ type ProductFormState = {
   image_url: string
   active: boolean
 }
+
+type ProductFilter = 'all' | 'low-stock' | 'out-of-stock' | 'inactive'
 
 const emptyForm: ProductFormState = {
   name: '',
@@ -86,13 +89,28 @@ function formatDateTime(value: string | null) {
   })
 }
 
+function normalizeFilter(value: string): ProductFilter {
+  if (value === 'low-stock') return 'low-stock'
+  if (value === 'out-of-stock') return 'out-of-stock'
+  if (value === 'inactive') return 'inactive'
+  return 'all'
+}
+
 export default function ProductAdminList({
   initialProducts,
   stockAdjustments,
+  initialQuery = '',
+  initialFilter = 'all',
 }: {
   initialProducts: ProductRow[]
   stockAdjustments: StockAdjustmentRow[]
+  initialQuery?: string
+  initialFilter?: string
 }) {
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+
   const safeInitialProducts = useMemo(
     () => (Array.isArray(initialProducts) ? initialProducts : []),
     [initialProducts]
@@ -101,31 +119,89 @@ export default function ProductAdminList({
   const [products, setProducts] = useState<ProductRow[]>(safeInitialProducts)
   const [adjustments, setAdjustments] =
     useState<StockAdjustmentRow[]>(stockAdjustments || [])
-  const [query, setQuery] = useState('')
+  const [query, setQuery] = useState(initialQuery)
+  const [filter, setFilter] = useState<ProductFilter>(normalizeFilter(initialFilter))
   const [createForm, setCreateForm] = useState<ProductFormState>(emptyForm)
   const [createImage, setCreateImage] = useState<File | null>(null)
   const [createMessage, setCreateMessage] = useState('')
   const [creating, setCreating] = useState(false)
 
+  useEffect(() => {
+    const nextQuery = searchParams.get('q') || ''
+    const nextFilter = normalizeFilter(searchParams.get('filter') || 'all')
+
+    if (nextQuery !== query) {
+      setQuery(nextQuery)
+    }
+
+    if (nextFilter !== filter) {
+      setFilter(nextFilter)
+    }
+  }, [searchParams])
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const params = new URLSearchParams(searchParams.toString())
+
+      const trimmedQuery = query.trim()
+
+      if (trimmedQuery) {
+        params.set('q', trimmedQuery)
+      } else {
+        params.delete('q')
+      }
+
+      if (filter !== 'all') {
+        params.set('filter', filter)
+      } else {
+        params.delete('filter')
+      }
+
+      const next = params.toString()
+      const current = searchParams.toString()
+
+      if (next !== current) {
+        router.replace(next ? `${pathname}?${next}` : pathname, {
+          scroll: false,
+        })
+      }
+    }, 250)
+
+    return () => window.clearTimeout(timer)
+  }, [query, filter, pathname, router, searchParams])
+
   const filteredProducts = useMemo(() => {
     const q = query.trim().toLowerCase()
-    if (!q) return products
 
-    return products.filter((product) =>
-      [
-        product.name || '',
-        product.description || '',
-        product.image_url || '',
-        String(product.price_retail || ''),
-        String(product.price_wholesale || ''),
-        String(product.stock || ''),
-        product.active ? 'active' : 'inactive',
-      ]
-        .join(' ')
-        .toLowerCase()
-        .includes(q)
-    )
-  }, [products, query])
+    return products.filter((product) => {
+      const stock = Number(product.stock || 0)
+      const matchesQuery =
+        !q ||
+        [
+          product.name || '',
+          product.description || '',
+          product.image_url || '',
+          String(product.price_retail || ''),
+          String(product.price_wholesale || ''),
+          String(product.stock || ''),
+          product.active ? 'active' : 'inactive',
+        ]
+          .join(' ')
+          .toLowerCase()
+          .includes(q)
+
+      const matchesFilter =
+        filter === 'low-stock'
+          ? stock > 0 && stock <= 3
+          : filter === 'out-of-stock'
+            ? stock <= 0
+            : filter === 'inactive'
+              ? !product.active
+              : true
+
+      return matchesQuery && matchesFilter
+    })
+  }, [products, query, filter])
 
   const stats = useMemo(() => {
     const total = products.length
@@ -445,6 +521,17 @@ export default function ProductAdminList({
             placeholder="Search name, description, stock or price..."
             className={styles.input}
           />
+
+          <select
+            value={filter}
+            onChange={(e) => setFilter(normalizeFilter(e.target.value))}
+            className={styles.input}
+          >
+            <option value="all">All products</option>
+            <option value="low-stock">Low stock</option>
+            <option value="out-of-stock">Out of stock</option>
+            <option value="inactive">Inactive</option>
+          </select>
         </div>
 
         <div className={styles.productList}>

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import styles from './wholesale.module.css'
 
@@ -24,6 +25,8 @@ type WholesaleAccountRow = {
   created_at: string | null
 }
 
+type StatusFilter = 'all' | 'pending' | 'approved' | 'rejected'
+
 function formatDate(value: string | null) {
   if (!value) return '—'
   return new Date(value).toLocaleString('en-AU', {
@@ -32,21 +35,80 @@ function formatDate(value: string | null) {
   })
 }
 
+function normalizeStatusFilter(value: string): StatusFilter {
+  if (value === 'pending') return 'pending'
+  if (value === 'approved') return 'approved'
+  if (value === 'rejected') return 'rejected'
+  return 'all'
+}
+
 export default function WholesaleAdminPanel({
   requests,
   accounts,
+  initialQuery = '',
+  initialStatusFilter = 'all',
 }: {
   requests: WholesaleRequestRow[]
   accounts: WholesaleAccountRow[]
+  initialQuery?: string
+  initialStatusFilter?: string
 }) {
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+
   const [requestRows, setRequestRows] = useState(requests)
   const [accountRows, setAccountRows] = useState(accounts)
   const [busyId, setBusyId] = useState<string | null>(null)
-  const [query, setQuery] = useState('')
-  const [statusFilter, setStatusFilter] = useState<
-    'all' | 'pending' | 'approved' | 'rejected'
-  >('all')
+  const [query, setQuery] = useState(initialQuery)
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>(
+    normalizeStatusFilter(initialStatusFilter)
+  )
   const [toast, setToast] = useState('')
+
+  useEffect(() => {
+    const nextQuery = searchParams.get('q') || ''
+    const nextStatus = normalizeStatusFilter(searchParams.get('status') || 'all')
+
+    if (nextQuery !== query) {
+      setQuery(nextQuery)
+    }
+
+    if (nextStatus !== statusFilter) {
+      setStatusFilter(nextStatus)
+    }
+  }, [searchParams])
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const params = new URLSearchParams(searchParams.toString())
+
+      const trimmedQuery = query.trim()
+
+      if (trimmedQuery) {
+        params.set('q', trimmedQuery)
+      } else {
+        params.delete('q')
+      }
+
+      if (statusFilter !== 'all') {
+        params.set('status', statusFilter)
+      } else {
+        params.delete('status')
+      }
+
+      const next = params.toString()
+      const current = searchParams.toString()
+
+      if (next !== current) {
+        router.replace(next ? `${pathname}?${next}` : pathname, {
+          scroll: false,
+        })
+      }
+    }, 250)
+
+    return () => window.clearTimeout(timer)
+  }, [query, statusFilter, pathname, router, searchParams])
 
   useEffect(() => {
     const supabase = createClient()
@@ -292,11 +354,7 @@ export default function WholesaleAdminPanel({
 
         <select
           value={statusFilter}
-          onChange={(e) =>
-            setStatusFilter(
-              e.target.value as 'all' | 'pending' | 'approved' | 'rejected'
-            )
-          }
+          onChange={(e) => setStatusFilter(normalizeStatusFilter(e.target.value))}
           className={styles.select}
         >
           <option value="all">All request statuses</option>

@@ -25,8 +25,19 @@ type WholesaleAccountRow = {
   created_at: string | null
 }
 
-export default async function AdminWholesalePage() {
+export default async function AdminWholesalePage({
+  searchParams,
+}: {
+  searchParams?: Promise<{
+    q?: string
+    status?: string
+  }>
+}) {
   await requireAdmin()
+
+  const params = (await searchParams) || {}
+  const initialQuery = (params.q || '').trim()
+  const initialStatusFilter = (params.status || '').trim().toLowerCase()
 
   const { data: requestsData, error: requestsError } = await supabaseAdmin
     .from('wholesale_requests')
@@ -71,6 +82,8 @@ export default async function AdminWholesalePage() {
         <WholesaleAdminPanel
           requests={(requestsData || []) as WholesaleRequestRow[]}
           accounts={(accountsData || []) as WholesaleAccountRow[]}
+          initialQuery={initialQuery}
+          initialStatusFilter={initialStatusFilter}
         />
       </div>
     </main>

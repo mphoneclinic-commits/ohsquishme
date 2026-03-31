@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import styles from './order-edit.module.css'
+import { formatDateTime, formatDate, formatTime, formatRelativeTime } from '@/app/admin/utils'
 
 type OrderRow = {
   id: string
@@ -52,13 +53,7 @@ function formatMoney(value: number | string | null) {
   return `$${Number(value || 0).toFixed(2)}`
 }
 
-function formatDateTime(value: string | null) {
-  if (!value) return '—'
-  return new Date(value).toLocaleString('en-AU', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  })
-}
+
 
 export default function OrderEditor({
   order,

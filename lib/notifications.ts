@@ -30,16 +30,6 @@ type SendEmailArgs = {
   eventType: string
 }
 
-type BrandEmailArgs = {
-  preheader?: string
-  heading: string
-  intro?: string
-  body: string[]
-  accentLabel?: string
-  accentValue?: string
-  outro?: string
-}
-
 async function logNotification({
   orderId = null,
   userId = null,
@@ -85,6 +75,10 @@ function getSmtpTransporter() {
   })
 }
 
+function getFromEmail() {
+  return process.env.NOTIFY_FROM_EMAIL || process.env.SMTP_FROM || null
+}
+
 function escapeHtml(value: string) {
   return value
     .replaceAll('&', '&amp;')
@@ -98,94 +92,6 @@ function textToHtml(text: string) {
   return `<div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.6;color:#2d2428;white-space:pre-line;">${escapeHtml(
     text
   )}</div>`
-}
-
-function buildBrandEmail({
-  preheader = '',
-  heading,
-  intro,
-  body,
-  accentLabel,
-  accentValue,
-  outro,
-}: BrandEmailArgs) {
-  const safeHeading = escapeHtml(heading)
-  const safeIntro = intro ? escapeHtml(intro) : ''
-  const safeBody = body
-    .map(
-      (line) =>
-        `<p style="margin:0 0 14px;color:#4b3b42;font-size:15px;line-height:1.7;">${escapeHtml(
-          line
-        )}</p>`
-    )
-    .join('')
-  const safeAccentLabel = accentLabel ? escapeHtml(accentLabel) : ''
-  const safeAccentValue = accentValue ? escapeHtml(accentValue) : ''
-  const safeOutro = outro ? escapeHtml(outro) : ''
-  const safePreheader = escapeHtml(preheader)
-
-  return `
-    <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">
-      ${safePreheader}
-    </div>
-    <div style="margin:0;padding:24px;background:#fff7fa;">
-      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width:640px;margin:0 auto;background:#ffffff;border:1px solid #f1dce5;border-radius:22px;overflow:hidden;box-shadow:0 10px 24px rgba(30,18,24,0.06);">
-        <tr>
-          <td style="padding:28px 28px 18px;background:linear-gradient(135deg,#fff1f6,#fff9fb);border-bottom:1px solid #f4e2ea;">
-            <div style="font-family:Arial,sans-serif;font-size:12px;letter-spacing:1.4px;text-transform:uppercase;color:#a86b84;margin-bottom:10px;">
-              Oh Squish Me
-            </div>
-            <h1 style="margin:0;font-family:Arial,sans-serif;font-size:28px;line-height:1.15;color:#d63384;">
-              ${safeHeading}
-            </h1>
-            ${
-              safeIntro
-                ? `<p style="margin:12px 0 0;color:#6b5962;font-size:15px;line-height:1.7;">${safeIntro}</p>`
-                : ''
-            }
-          </td>
-        </tr>
-
-        ${
-          safeAccentLabel && safeAccentValue
-            ? `
-        <tr>
-          <td style="padding:18px 28px 0;">
-            <div style="border:1px solid #f1dce5;background:#fff9fc;border-radius:16px;padding:14px 16px;">
-              <div style="font-family:Arial,sans-serif;font-size:12px;text-transform:uppercase;letter-spacing:1.2px;color:#8a6d79;margin-bottom:6px;">
-                ${safeAccentLabel}
-              </div>
-              <div style="font-family:Arial,sans-serif;font-size:18px;font-weight:700;color:#2d2428;">
-                ${safeAccentValue}
-              </div>
-            </div>
-          </td>
-        </tr>
-        `
-            : ''
-        }
-
-        <tr>
-          <td style="padding:22px 28px 12px;font-family:Arial,sans-serif;">
-            ${safeBody}
-          </td>
-        </tr>
-
-        <tr>
-          <td style="padding:8px 28px 28px;font-family:Arial,sans-serif;">
-            ${
-              safeOutro
-                ? `<p style="margin:0;color:#5f4d55;font-size:15px;line-height:1.7;">${safeOutro}</p>`
-                : ''
-            }
-            <p style="margin:18px 0 0;color:#7a6f76;font-size:13px;line-height:1.6;">
-              Cute, soft &amp; oh-so-satisfying 🎀
-            </p>
-          </td>
-        </tr>
-      </table>
-    </div>
-  `
 }
 
 export async function sendSMS({
@@ -209,7 +115,7 @@ export async function sendSMS({
       message,
       errorText: 'Missing CRAZYTEL_API_KEY or CRAZYTEL_FROM',
     })
-    return
+    return false
   }
 
   try {
@@ -239,7 +145,7 @@ export async function sendSMS({
         message,
         errorText: data?.error || data?.message || `HTTP ${res.status}`,
       })
-      return
+      return false
     }
 
     await logNotification({
@@ -251,6 +157,8 @@ export async function sendSMS({
       status: 'sent',
       message,
     })
+
+    return true
   } catch (error) {
     await logNotification({
       orderId,
@@ -262,6 +170,7 @@ export async function sendSMS({
       message,
       errorText: error instanceof Error ? error.message : 'Unknown SMS error',
     })
+    return false
   }
 }
 
@@ -274,7 +183,7 @@ export async function sendEmail({
   userId = null,
   eventType,
 }: SendEmailArgs) {
-  const from = process.env.NOTIFY_FROM_EMAIL
+  const from = getFromEmail()
   const transporter = getSmtpTransporter()
 
   if (!from || !transporter) {
@@ -287,9 +196,9 @@ export async function sendEmail({
       status: 'failed',
       message: text,
       errorText:
-        'Missing SMTP_HOST / SMTP_USER / SMTP_PASS / NOTIFY_FROM_EMAIL configuration',
+        'Missing SMTP_HOST / SMTP_USER / SMTP_PASS / NOTIFY_FROM_EMAIL or SMTP_FROM configuration',
     })
-    return
+    return false
   }
 
   try {
@@ -310,6 +219,8 @@ export async function sendEmail({
       status: 'sent',
       message: text,
     })
+
+    return true
   } catch (error) {
     await logNotification({
       orderId,
@@ -321,6 +232,7 @@ export async function sendEmail({
       message: text,
       errorText: error instanceof Error ? error.message : 'Unknown email error',
     })
+    return false
   }
 }
 
@@ -347,22 +259,13 @@ We’ll send another update when it moves through packing and shipping.
 
 Thank you for supporting Oh Squish Me 💕`
 
-  const emailHtml = buildBrandEmail({
-    preheader: `We’ve received your order ${shortOrderId}`,
-    heading: 'Your order is confirmed 💖',
-    intro: `Thanks for your order, ${name}.`,
-    accentLabel: 'Order reference',
-    accentValue: shortOrderId,
-    body: [
-      'We’ve received your payment and your order is now being processed.',
-      'We’ll send another update as it moves through packing and shipping.',
-      'Thank you for supporting Oh Squish Me.',
-    ],
-    outro: 'With love, Oh Squish Me',
-  })
+  const result = {
+    smsSent: false,
+    emailSent: false,
+  }
 
-  if (args.notifySms === true && args.phone?.trim()) {
-    await sendSMS({
+  if (args.notifySms && args.phone?.trim()) {
+    result.smsSent = await sendSMS({
       to: args.phone.trim(),
       message: sms,
       orderId: args.orderId,
@@ -370,16 +273,17 @@ Thank you for supporting Oh Squish Me 💕`
     })
   }
 
-  if (args.notifyEmail === true && args.email?.trim()) {
-    await sendEmail({
+  if (args.notifyEmail && args.email?.trim()) {
+    result.emailSent = await sendEmail({
       to: args.email.trim(),
       subject: `Order ${shortOrderId} confirmed`,
       text: emailText,
-      html: emailHtml,
       orderId: args.orderId,
       eventType: 'order_placed',
     })
   }
+
+  return result
 }
 
 export async function sendOrderShippedNotification(args: {
@@ -407,23 +311,13 @@ Your Oh Squish Me order ${shortOrderId} has shipped${courierText}.${trackingText
 
 Thank you for your order.`
 
-  const emailHtml = buildBrandEmail({
-    preheader: `Your order ${shortOrderId} has shipped`,
-    heading: 'Your order is on the way 🎀',
-    intro: `Hi ${name}, great news — your order has shipped${courierText}.`,
-    accentLabel: 'Order reference',
-    accentValue: shortOrderId,
-    body: [
-      args.trackingNumber?.trim()
-        ? `Tracking number: ${args.trackingNumber.trim()}`
-        : 'Your parcel is now on its way.',
-      'Thank you again for supporting Oh Squish Me.',
-    ],
-    outro: 'Keep an eye out for your delivery.',
-  })
+  const result = {
+    smsSent: false,
+    emailSent: false,
+  }
 
-  if (args.notifySms === true && args.phone?.trim()) {
-    await sendSMS({
+  if (args.notifySms !== false && args.phone?.trim()) {
+    result.smsSent = await sendSMS({
       to: args.phone.trim(),
       message: sms,
       orderId: args.orderId,
@@ -431,16 +325,17 @@ Thank you for your order.`
     })
   }
 
-  if (args.notifyEmail === true && args.email?.trim()) {
-    await sendEmail({
+  if (args.notifyEmail !== false && args.email?.trim()) {
+    result.emailSent = await sendEmail({
       to: args.email.trim(),
       subject: `Your order ${shortOrderId} has shipped`,
       text: emailText,
-      html: emailHtml,
       orderId: args.orderId,
       eventType: 'order_shipped',
     })
   }
+
+  return result
 }
 
 export async function sendOrderCompletedNotification(args: {
@@ -462,21 +357,13 @@ Your Oh Squish Me order ${shortOrderId} is now completed.
 
 Thank you for shopping with us.`
 
-  const emailHtml = buildBrandEmail({
-    preheader: `Your order ${shortOrderId} is now completed`,
-    heading: 'Order completed 🌸',
-    intro: `Hi ${name}, your order is now complete.`,
-    accentLabel: 'Order reference',
-    accentValue: shortOrderId,
-    body: [
-      'Thank you for shopping with Oh Squish Me.',
-      'We hope your new squishies bring you lots of cute, soft and satisfying moments.',
-    ],
-    outro: 'Thank you again for your support.',
-  })
+  const result = {
+    smsSent: false,
+    emailSent: false,
+  }
 
-  if (args.notifySms === true && args.phone?.trim()) {
-    await sendSMS({
+  if (args.notifySms !== false && args.phone?.trim()) {
+    result.smsSent = await sendSMS({
       to: args.phone.trim(),
       message: sms,
       orderId: args.orderId,
@@ -484,16 +371,17 @@ Thank you for shopping with us.`
     })
   }
 
-  if (args.notifyEmail === true && args.email?.trim()) {
-    await sendEmail({
+  if (args.notifyEmail !== false && args.email?.trim()) {
+    result.emailSent = await sendEmail({
       to: args.email.trim(),
       subject: `Your order ${shortOrderId} is completed`,
       text: emailText,
-      html: emailHtml,
       orderId: args.orderId,
       eventType: 'order_completed',
     })
   }
+
+  return result
 }
 
 export async function sendWholesaleDecisionNotification(args: {
@@ -520,24 +408,13 @@ You can now access wholesale pricing on eligible products.`
 
 Your wholesale request for ${business} was not approved at this time.`
 
-  const emailHtml = buildBrandEmail({
-    preheader: approved
-      ? 'Your wholesale request has been approved'
-      : 'Your wholesale request has been reviewed',
-    heading: approved ? 'Wholesale approved 💕' : 'Wholesale request update',
-    intro: approved
-      ? `Good news — your request for ${business} has been approved.`
-      : `Your request for ${business} was not approved at this time.`,
-    accentLabel: 'Business',
-    accentValue: business,
-    body: approved
-      ? ['You can now access wholesale pricing on eligible products.']
-      : ['You’re welcome to reach out again in future if your needs change.'],
-    outro: 'Thanks for your interest in Oh Squish Me.',
-  })
+  const result = {
+    smsSent: false,
+    emailSent: false,
+  }
 
   if (args.phone?.trim()) {
-    await sendSMS({
+    result.smsSent = await sendSMS({
       to: args.phone.trim(),
       message: sms,
       userId: args.userId,
@@ -546,63 +423,16 @@ Your wholesale request for ${business} was not approved at this time.`
   }
 
   if (args.email?.trim()) {
-    await sendEmail({
+    result.emailSent = await sendEmail({
       to: args.email.trim(),
       subject: approved
         ? 'Your wholesale request was approved'
         : 'Your wholesale request update',
       text: emailText,
-      html: emailHtml,
       userId: args.userId,
       eventType: approved ? 'wholesale_approved' : 'wholesale_rejected',
     })
   }
-}
 
-export async function sendAdminNewOrderNotification(args: {
-  orderId: string
-  customerEmail?: string | null
-  customerPhone?: string | null
-  shippingName?: string | null
-  total?: number | string | null
-}) {
-  const adminEmail = process.env.ADMIN_NOTIFY_EMAIL?.trim()
-
-  if (!adminEmail) {
-    return
-  }
-
-  const shortOrderId = args.orderId.slice(0, 8)
-  const totalText = `$${Number(args.total || 0).toFixed(2)}`
-
-  const text = `New paid order received.
-
-Order: ${shortOrderId}
-Customer: ${args.shippingName || '—'}
-Email: ${args.customerEmail || '—'}
-Phone: ${args.customerPhone || '—'}
-Total: ${totalText}`
-
-  const html = buildBrandEmail({
-    preheader: `New paid order ${shortOrderId}`,
-    heading: 'New paid order received',
-    accentLabel: 'Order reference',
-    accentValue: shortOrderId,
-    body: [
-      `Customer: ${args.shippingName || '—'}`,
-      `Email: ${args.customerEmail || '—'}`,
-      `Phone: ${args.customerPhone || '—'}`,
-      `Total: ${totalText}`,
-    ],
-    outro: 'Open the admin dashboard to process it.',
-  })
-
-  await sendEmail({
-    to: adminEmail,
-    subject: `New paid order ${shortOrderId}`,
-    text,
-    html,
-    orderId: args.orderId,
-    eventType: 'admin_new_order',
-  })
+  return result
 }

@@ -1,6 +1,7 @@
 import { requireAdmin } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import styles from './wholesale-accounts.module.css'
+import { formatDateTime, formatDate, formatTime, formatRelativeTime } from '@/app/admin/utils'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,13 +12,6 @@ type ProfileRow = {
   created_at: string | null
 }
 
-function formatDate(value: string | null) {
-  if (!value) return '—'
-  return new Date(value).toLocaleString('en-AU', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  })
-}
 
 export default async function AdminWholesaleAccountsPage() {
   await requireAdmin()

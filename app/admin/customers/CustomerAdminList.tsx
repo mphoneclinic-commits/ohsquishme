@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import styles from './customers.module.css'
+import { formatDateTime, formatDate, formatTime, formatRelativeTime } from '@/app/admin/utils'
 
 type ProfileRow = {
   id: string
@@ -10,13 +11,6 @@ type ProfileRow = {
   created_at: string | null
 }
 
-function formatDate(value: string | null) {
-  if (!value) return '—'
-  return new Date(value).toLocaleString('en-AU', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  })
-}
 
 export default function CustomerAdminList({
   initialCustomers,

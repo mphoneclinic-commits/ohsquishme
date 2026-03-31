@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { requireAdmin } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { formatDateTime } from '@/app/admin/utils'
 import styles from './admin-home.module.css'
 
 export const dynamic = 'force-dynamic'
@@ -37,14 +38,6 @@ type WholesaleRequestRow = {
 
 function formatMoney(value: number | string | null) {
   return `$${Number(value || 0).toFixed(2)}`
-}
-
-function formatDateTime(value: string | null) {
-  if (!value) return '—'
-  return new Date(value).toLocaleString('en-AU', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  })
 }
 
 function formatStatus(value: string | null) {
@@ -86,9 +79,6 @@ export default async function AdminHomePage() {
   await requireAdmin()
 
   const now = new Date()
-  const todayStart = new Date()
-  todayStart.setHours(0, 0, 0, 0)
-
   const weekStart = startOfWeek(now)
 
   const yesterday = new Date()
@@ -168,13 +158,9 @@ export default async function AdminHomePage() {
     .sort((a, b) => Number(b.ageHours || 0) - Number(a.ageHours || 0))
     .slice(0, 8)
 
-  const todaysOrders = orders
-    .filter((order) => order.today)
-    .slice(0, 8)
+  const todaysOrders = orders.filter((order) => order.today).slice(0, 8)
 
-  const thisWeeksOrders = orders
-    .filter((order) => order.thisWeek)
-    .slice(0, 8)
+  const thisWeeksOrders = orders.filter((order) => order.thisWeek).slice(0, 8)
 
   const lowStockProducts = (lowStockData || []) as ProductRow[]
   const pendingWholesale = (wholesalePendingData || []) as WholesaleRequestRow[]

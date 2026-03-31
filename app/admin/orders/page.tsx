@@ -3,6 +3,8 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdmin } from '@/lib/auth'
 import OrderStatusForm from './OrderStatusForm'
 import styles from './orders.module.css'
+import { formatDateTime, formatDate, formatTime, formatRelativeTime } from '@/app/admin/utils'
+
 
 export const dynamic = 'force-dynamic'
 
@@ -30,14 +32,6 @@ type OrderItemRow = {
 
 function formatMoney(value: number | string | null) {
   return `$${Number(value || 0).toFixed(2)}`
-}
-
-function formatDate(value: string | null) {
-  if (!value) return '—'
-  return new Date(value).toLocaleString('en-AU', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  })
 }
 
 function hoursSince(value: string | null) {

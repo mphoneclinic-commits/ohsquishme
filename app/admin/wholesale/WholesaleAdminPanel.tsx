@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import styles from './wholesale.module.css'
+import { formatDateTime, formatDate, formatTime, formatRelativeTime } from '@/app/admin/utils'
+
 
 type WholesaleRequestRow = {
   id: string
@@ -26,14 +28,6 @@ type WholesaleAccountRow = {
 }
 
 type StatusFilter = 'all' | 'pending' | 'approved' | 'rejected'
-
-function formatDate(value: string | null) {
-  if (!value) return '—'
-  return new Date(value).toLocaleString('en-AU', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  })
-}
 
 function normalizeStatusFilter(value: string): StatusFilter {
   if (value === 'pending') return 'pending'

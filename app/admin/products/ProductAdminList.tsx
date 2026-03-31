@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import styles from './products.module.css'
+import { formatDateTime, formatDate, formatTime, formatRelativeTime } from '@/app/admin/utils'
 
 type ProductRow = {
   id: string
@@ -81,13 +82,6 @@ function formatMoney(value: string | number | null | undefined) {
   return `$${num.toFixed(2)}`
 }
 
-function formatDateTime(value: string | null) {
-  if (!value) return '—'
-  return new Date(value).toLocaleString('en-AU', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  })
-}
 
 function normalizeFilter(value: string): ProductFilter {
   if (value === 'low-stock') return 'low-stock'

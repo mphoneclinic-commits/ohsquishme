@@ -2,10 +2,7 @@ import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { stripe } from '@/lib/stripe'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
-import {
-  sendAdminNewOrderNotification,
-  sendOrderPlacedNotification,
-} from '@/lib/notifications'
+import { sendOrderPlacedNotification } from '@/lib/notifications'
 
 export async function POST(req: Request) {
   const signature = req.headers.get('stripe-signature')
@@ -85,7 +82,16 @@ export async function POST(req: Request) {
         const { data: order, error: orderError } = await supabaseAdmin
           .from('orders')
           .select(
-            'id, email, phone, shipping_name, total, sms_sent_at, email_sent_at, notify_sms, notify_email'
+            `
+            id,
+            email,
+            phone,
+            shipping_name,
+            notify_sms,
+            notify_email,
+            sms_sent_at,
+            email_sent_at
+            `
           )
           .eq('id', orderId)
           .single()
@@ -95,54 +101,54 @@ export async function POST(req: Request) {
           break
         }
 
-        const shouldSendSms =
-          order.notify_sms === true &&
-          !!order.phone?.trim() &&
-          !order.sms_sent_at
+        const shouldTrySms =
+          order.notify_sms !== false && !order.sms_sent_at && !!order.phone?.trim()
 
-        const shouldSendEmail =
-          order.notify_email === true &&
-          !!order.email?.trim() &&
-          !order.email_sent_at
+        const shouldTryEmail =
+          order.notify_email !== false &&
+          !order.email_sent_at &&
+          !!order.email?.trim()
 
-        if (shouldSendSms || shouldSendEmail) {
+        if (shouldTrySms || shouldTryEmail) {
           try {
-            await sendOrderPlacedNotification({
+            const result = await sendOrderPlacedNotification({
               orderId: order.id,
               email: order.email,
               phone: order.phone,
               shippingName: order.shipping_name,
-              notifySms: shouldSendSms,
-              notifyEmail: shouldSendEmail,
+              notifySms: shouldTrySms,
+              notifyEmail: shouldTryEmail,
             })
 
-            await supabaseAdmin
-              .from('orders')
-              .update({
-                sms_sent_at: shouldSendSms ? new Date().toISOString() : order.sms_sent_at,
-                email_sent_at: shouldSendEmail
-                  ? new Date().toISOString()
-                  : order.email_sent_at,
-              })
-              .eq('id', orderId)
-          } catch (notificationError) {
-            console.error('Order placed notification failed:', notificationError)
-          }
-        }
+            const updates: Record<string, string> = {}
 
-        try {
-          await sendAdminNewOrderNotification({
-            orderId: order.id,
-            customerEmail: order.email,
-            customerPhone: order.phone,
-            shippingName: order.shipping_name,
-            total: order.total,
-          })
-        } catch (adminNotificationError) {
-          console.error(
-            'Admin new order notification failed:',
-            adminNotificationError
-          )
+            if (result.smsSent) {
+              updates.sms_sent_at = new Date().toISOString()
+            }
+
+            if (result.emailSent) {
+              updates.email_sent_at = new Date().toISOString()
+            }
+
+            if (Object.keys(updates).length > 0) {
+              const { error: updateError } = await supabaseAdmin
+                .from('orders')
+                .update(updates)
+                .eq('id', orderId)
+
+              if (updateError) {
+                console.error(
+                  'Failed to update order notification timestamps:',
+                  updateError
+                )
+              }
+            }
+          } catch (notificationError) {
+            console.error(
+              'Order placed notification failed unexpectedly:',
+              notificationError
+            )
+          }
         }
 
         break

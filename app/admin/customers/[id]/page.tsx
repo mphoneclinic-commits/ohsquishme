@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { requireAdmin } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { formatDateTime, formatDate, formatTime, formatRelativeTime } from '@/app/admin/utils'
 
 import CustomerRoleForm from './CustomerRoleForm'
 import styles from './customer-detail.module.css'
@@ -22,13 +23,6 @@ type OrderRow = {
   created_at: string | null
 }
 
-function formatDate(value: string | null) {
-  if (!value) return '—'
-  return new Date(value).toLocaleString('en-AU', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  })
-}
 
 function formatMoney(value: number | string | null) {
   return `$${Number(value || 0).toFixed(2)}`

@@ -1,6 +1,7 @@
 import { requireAdmin } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import styles from './activity.module.css'
+import { formatDateTime, formatDate, formatTime, formatRelativeTime } from '@/app/admin/utils'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,13 +16,6 @@ type ActivityRow = {
   details: Record<string, unknown> | null
 }
 
-function formatDateTime(value: string | null) {
-  if (!value) return '—'
-  return new Date(value).toLocaleString('en-AU', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  })
-}
 
 function formatEventType(value: string) {
   return value.replaceAll('_', ' ')

@@ -1,0 +1,3319 @@
+admin/page:
+import Link from 'next/link'
+import { requireAdmin } from '@/lib/auth'
+import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import styles from './admin-home.module.css'
+
+export const dynamic = 'force-dynamic'
+
+type OrderRow = {
+  id: string
+  email: string | null
+  status: string | null
+  total: number | string | null
+  created_at: string | null
+  paid_at: string | null
+  refunded_at?: string | null
+  shipping_name: string | null
+  tracking_number: string | null
+  courier: string | null
+  stripe_session_id?: string | null
+  refund_status?: string | null
+}
+
+type ProductRow = {
+  id: string
+  name: string | null
+  stock: number | null
+  active: boolean | null
+}
+
+type WholesaleRequestRow = {
+  id: string
+  business_name: string | null
+  email: string | null
+  created_at: string | null
+  status: string | null
+}
+
+function formatMoney(value: number | string | null) {
+  return `$${Number(value || 0).toFixed(2)}`
+}
+
+function formatDateTime(value: string | null) {
+  if (!value) return '—'
+  return new Date(value).toLocaleString('en-AU', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  })
+}
+
+function formatStatus(value: string | null) {
+  if (!value) return 'unknown'
+  return value.replaceAll('_', ' ')
+}
+
+function hoursSince(value: string | null) {
+  if (!value) return null
+  const created = new Date(value).getTime()
+  const now = Date.now()
+  return Math.floor((now - created) / (1000 * 60 * 60))
+}
+
+function isSameDay(a: Date, b: Date) {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  )
+}
+
+function startOfWeek(date: Date) {
+  const copy = new Date(date)
+  const day = copy.getDay()
+  const diff = day === 0 ? -6 : 1 - day
+  copy.setDate(copy.getDate() + diff)
+  copy.setHours(0, 0, 0, 0)
+  return copy
+}
+
+function isThisWeek(value: string | null, weekStart: Date, now: Date) {
+  if (!value) return false
+  const date = new Date(value)
+  return date >= weekStart && date <= now
+}
+
+export default async function AdminHomePage() {
+  await requireAdmin()
+
+  const now = new Date()
+  const todayStart = new Date()
+  todayStart.setHours(0, 0, 0, 0)
+
+  const weekStart = startOfWeek(now)
+
+  const yesterday = new Date()
+  yesterday.setDate(yesterday.getDate() - 1)
+
+  const [
+    { data: orderData },
+    { data: lowStockData },
+    { data: wholesalePendingData },
+  ] = await Promise.all([
+    supabaseAdmin
+      .from('orders')
+      .select(
+        'id, email, status, total, created_at, paid_at, refunded_at, shipping_name, tracking_number, courier, stripe_session_id, refund_status'
+      )
+      .order('created_at', { ascending: false })
+      .limit(120),
+
+    supabaseAdmin
+      .from('products')
+      .select('id, name, stock, active')
+      .eq('active', true)
+      .gt('stock', 0)
+      .lte('stock', 3)
+      .order('stock', { ascending: true })
+      .limit(10),
+
+    supabaseAdmin
+      .from('wholesale_requests')
+      .select('id, business_name, email, created_at, status')
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false })
+      .limit(8),
+  ])
+
+  const orders = ((orderData || []) as OrderRow[]).map((order) => {
+    const ageHours = hoursSince(order.created_at)
+    const isOverdue =
+      ['pending', 'paid', 'awaiting_payment', 'packed'].includes(
+        order.status || ''
+      ) && ageHours !== null && ageHours >= 24
+
+    const created = order.created_at ? new Date(order.created_at) : null
+    const today = created ? isSameDay(created, now) : false
+    const thisWeek = created ? isThisWeek(order.created_at, weekStart, now) : false
+
+    return {
+      ...order,
+      ageHours,
+      isOverdue,
+      today,
+      thisWeek,
+    }
+  })
+
+  const ordersToProcess = orders.filter((order) =>
+    ['pending', 'paid', 'awaiting_payment'].includes(order.status || '')
+  )
+
+  const packedOrders = orders.filter((order) => order.status === 'packed')
+
+  const failedPayments = orders.filter(
+    (order) =>
+      order.status === 'cancelled' ||
+      (order.status === 'pending' && !order.paid_at && !!order.stripe_session_id)
+  )
+
+  const recentRefunds = orders.filter(
+    (order) =>
+      order.refund_status === 'refunded' &&
+      !!order.refunded_at &&
+      new Date(order.refunded_at) >= yesterday
+  )
+
+  const overdueOrders = [...orders]
+    .filter((order) => order.isOverdue)
+    .sort((a, b) => Number(b.ageHours || 0) - Number(a.ageHours || 0))
+    .slice(0, 8)
+
+  const todaysOrders = orders
+    .filter((order) => order.today)
+    .slice(0, 8)
+
+  const thisWeeksOrders = orders
+    .filter((order) => order.thisWeek)
+    .slice(0, 8)
+
+  const lowStockProducts = (lowStockData || []) as ProductRow[]
+  const pendingWholesale = (wholesalePendingData || []) as WholesaleRequestRow[]
+
+  return (
+    <main className={styles.page}>
+      <div className={styles.shell}>
+        <div className={styles.topBar}>
+          <div>
+            <p className={styles.eyebrow}>Admin</p>
+            <h1 className={styles.title}>Operations Dashboard</h1>
+            <p className={styles.subtitle}>
+              Priorities, exceptions and today’s workload in one place.
+            </p>
+          </div>
+        </div>
+
+        <section className={styles.summaryGrid}>
+          <DashboardCard
+            label="Orders to process"
+            value={ordersToProcess.length}
+            link="/admin/orders?status=pending"
+            tone="urgent"
+            helper="New, paid or awaiting payment"
+          />
+
+          <DashboardCard
+            label="Packed orders"
+            value={packedOrders.length}
+            link="/admin/orders?status=packed"
+            helper="Ready for shipping"
+          />
+
+          <DashboardCard
+            label="Overdue orders"
+            value={overdueOrders.length}
+            link="/admin/orders?priority=overdue"
+            tone="urgent"
+            helper="24h+ without completion"
+          />
+
+          <DashboardCard
+            label="Low stock"
+            value={lowStockProducts.length}
+            link="/admin/products?filter=low-stock"
+            tone="warning"
+            helper="3 or fewer remaining"
+          />
+
+          <DashboardCard
+            label="Wholesale pending"
+            value={pendingWholesale.length}
+            link="/admin/wholesale?status=pending"
+            helper="Waiting for review"
+          />
+
+          <DashboardCard
+            label="Refunds (24h)"
+            value={recentRefunds.length}
+            link="/admin/orders?filter=refunded"
+            helper="Recently refunded"
+          />
+
+          <DashboardCard
+            label="Failed / cancelled"
+            value={failedPayments.length}
+            link="/admin/orders?filter=failed"
+            tone="warning"
+            helper="Need review"
+          />
+
+          <DashboardCard
+            label="Today’s orders"
+            value={todaysOrders.length}
+            link="/admin/orders?range=today"
+            helper="Created today"
+          />
+        </section>
+
+        <section className={styles.quickLinks}>
+          <Link href="/admin/orders" className={styles.link}>
+            Manage Orders →
+          </Link>
+          <Link href="/admin/products" className={styles.link}>
+            Manage Products →
+          </Link>
+          <Link href="/admin/wholesale" className={styles.link}>
+            Wholesale Requests →
+          </Link>
+          <Link href="/admin/activity" className={styles.link}>
+            Activity Logs →
+          </Link>
+        </section>
+
+        <section className={styles.panelGrid}>
+          <section className={styles.panel}>
+            <div className={styles.panelHeader}>
+              <div>
+                <p className={styles.panelEyebrow}>Priority</p>
+                <h2 className={styles.panelTitle}>Overdue orders</h2>
+              </div>
+              <Link href="/admin/orders?priority=overdue" className={styles.inlineLink}>
+                Open overdue
+              </Link>
+            </div>
+
+            {overdueOrders.length === 0 ? (
+              <div className={styles.emptyState}>No overdue orders right now.</div>
+            ) : (
+              <div className={styles.list}>
+                {overdueOrders.map((order) => (
+                  <OrderRowCard
+                    key={order.id}
+                    order={order}
+                    href={`/admin/orders/${order.id}`}
+                    showUrgency
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section className={styles.panel}>
+            <div className={styles.panelHeader}>
+              <div>
+                <p className={styles.panelEyebrow}>Today</p>
+                <h2 className={styles.panelTitle}>Today’s orders</h2>
+              </div>
+              <Link href="/admin/orders?range=today" className={styles.inlineLink}>
+                View today
+              </Link>
+            </div>
+
+            {todaysOrders.length === 0 ? (
+              <div className={styles.emptyState}>No orders created today.</div>
+            ) : (
+              <div className={styles.list}>
+                {todaysOrders.map((order) => (
+                  <OrderRowCard
+                    key={order.id}
+                    order={order}
+                    href={`/admin/orders/${order.id}`}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section className={styles.panel}>
+            <div className={styles.panelHeader}>
+              <div>
+                <p className={styles.panelEyebrow}>This week</p>
+                <h2 className={styles.panelTitle}>This week’s newest orders</h2>
+              </div>
+              <Link href="/admin/orders?range=week" className={styles.inlineLink}>
+                View week
+              </Link>
+            </div>
+
+            {thisWeeksOrders.length === 0 ? (
+              <div className={styles.emptyState}>No orders this week.</div>
+            ) : (
+              <div className={styles.list}>
+                {thisWeeksOrders.map((order) => (
+                  <OrderRowCard
+                    key={order.id}
+                    order={order}
+                    href={`/admin/orders/${order.id}`}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section className={styles.panel}>
+            <div className={styles.panelHeader}>
+              <div>
+                <p className={styles.panelEyebrow}>Exceptions</p>
+                <h2 className={styles.panelTitle}>Failed / cancelled payments</h2>
+              </div>
+              <Link href="/admin/orders?filter=failed" className={styles.inlineLink}>
+                Review failures
+              </Link>
+            </div>
+
+            {failedPayments.length === 0 ? (
+              <div className={styles.emptyState}>No failed or cancelled payments to review.</div>
+            ) : (
+              <div className={styles.list}>
+                {failedPayments.slice(0, 8).map((order) => (
+                  <OrderRowCard
+                    key={order.id}
+                    order={order}
+                    href={`/admin/orders/${order.id}`}
+                    tone="warning"
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section className={styles.panel}>
+            <div className={styles.panelHeader}>
+              <div>
+                <p className={styles.panelEyebrow}>Inventory risk</p>
+                <h2 className={styles.panelTitle}>Low stock products</h2>
+              </div>
+              <Link href="/admin/products?filter=low-stock" className={styles.inlineLink}>
+                Open products
+              </Link>
+            </div>
+
+            {lowStockProducts.length === 0 ? (
+              <div className={styles.emptyState}>No low stock products right now.</div>
+            ) : (
+              <div className={styles.list}>
+                {lowStockProducts.map((product) => (
+                  <Link
+                    key={product.id}
+                    href="/admin/products?filter=low-stock"
+                    className={styles.rowCard}
+                  >
+                    <div className={styles.rowTop}>
+                      <div>
+                        <div className={styles.rowTitle}>
+                          {product.name || 'Unnamed product'}
+                        </div>
+                        <div className={styles.rowMeta}>Inventory watchlist</div>
+                      </div>
+
+                      <div className={styles.rowRight}>
+                        <span className={styles.warningPill}>
+                          {Number(product.stock || 0)} left
+                        </span>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section className={styles.panel}>
+            <div className={styles.panelHeader}>
+              <div>
+                <p className={styles.panelEyebrow}>Wholesale queue</p>
+                <h2 className={styles.panelTitle}>Pending wholesale requests</h2>
+              </div>
+              <Link href="/admin/wholesale?status=pending" className={styles.inlineLink}>
+                Review wholesale
+              </Link>
+            </div>
+
+            {pendingWholesale.length === 0 ? (
+              <div className={styles.emptyState}>No wholesale requests pending.</div>
+            ) : (
+              <div className={styles.list}>
+                {pendingWholesale.map((request) => (
+                  <Link
+                    key={request.id}
+                    href="/admin/wholesale?status=pending"
+                    className={styles.rowCard}
+                  >
+                    <div className={styles.rowTop}>
+                      <div>
+                        <div className={styles.rowTitle}>
+                          {request.business_name || 'Unnamed business'}
+                        </div>
+                        <div className={styles.rowMeta}>
+                          {request.email || 'No email'}
+                        </div>
+                      </div>
+
+                      <div className={styles.rowRight}>
+                        <span className={styles.statusPill}>pending</span>
+                      </div>
+                    </div>
+
+                    <div className={styles.rowBottom}>
+                      <span>{formatDateTime(request.created_at)}</span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section className={`${styles.panel} ${styles.fullWidth}`}>
+            <div className={styles.panelHeader}>
+              <div>
+                <p className={styles.panelEyebrow}>Exceptions</p>
+                <h2 className={styles.panelTitle}>Recent refunds (24h)</h2>
+              </div>
+              <Link href="/admin/orders?filter=refunded" className={styles.inlineLink}>
+                Review refunds
+              </Link>
+            </div>
+
+            {recentRefunds.length === 0 ? (
+              <div className={styles.emptyState}>No refunds in the last 24 hours.</div>
+            ) : (
+              <div className={styles.list}>
+                {recentRefunds.slice(0, 8).map((order) => (
+                  <OrderRowCard
+                    key={order.id}
+                    order={order}
+                    href={`/admin/orders/${order.id}`}
+                    tone="refund"
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+        </section>
+      </div>
+    </main>
+  )
+}
+
+function DashboardCard({
+  label,
+  value,
+  link,
+  tone,
+  helper,
+}: {
+  label: string
+  value: number
+  link: string
+  tone?: 'urgent' | 'warning'
+  helper?: string
+}) {
+  return (
+    <Link
+      href={link}
+      className={`${styles.summaryCard} ${
+        tone === 'urgent'
+          ? styles.summaryCardUrgent
+          : tone === 'warning'
+            ? styles.summaryCardWarning
+            : ''
+      }`}
+    >
+      <div className={styles.summaryLabel}>{label}</div>
+      <div className={styles.summaryValue}>{value}</div>
+      {helper ? <div className={styles.summaryHelper}>{helper}</div> : null}
+    </Link>
+  )
+}
+
+function OrderRowCard({
+  order,
+  href,
+  showUrgency,
+  tone,
+}: {
+  order: OrderRow & {
+    ageHours?: number | null
+    isOverdue?: boolean
+  }
+  href: string
+  showUrgency?: boolean
+  tone?: 'warning' | 'refund'
+}) {
+  return (
+    <Link
+      href={href}
+      className={`${styles.rowCard} ${
+        showUrgency && order.isOverdue ? styles.rowCardUrgent : ''
+      } ${tone === 'warning' ? styles.rowCardWarning : ''} ${
+        tone === 'refund' ? styles.rowCardRefund : ''
+      }`}
+    >
+      <div className={styles.rowTop}>
+        <div>
+          <div className={styles.rowTitle}>Order {order.id.slice(0, 8)}</div>
+          <div className={styles.rowMeta}>
+            {order.shipping_name || order.email || 'No customer name'}
+          </div>
+        </div>
+
+        <div className={styles.rowRight}>
+          <span
+            className={
+              tone === 'refund'
+                ? styles.refundPill
+                : tone === 'warning'
+                  ? styles.warningPill
+                  : styles.statusPill
+            }
+          >
+            {tone === 'refund' ? 'refunded' : formatStatus(order.status)}
+          </span>
+          <strong>{formatMoney(order.total)}</strong>
+        </div>
+      </div>
+
+      <div className={styles.rowBottom}>
+        <span>{formatDateTime(order.created_at)}</span>
+        {showUrgency && order.isOverdue ? (
+          <span className={styles.urgentText}>{order.ageHours}h old</span>
+        ) : order.tracking_number ? (
+          <span>{order.courier || 'Tracking'} added</span>
+        ) : null}
+      </div>
+    </Link>
+  )
+}
+
+activity page:
+import { requireAdmin } from '@/lib/auth'
+import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import styles from './activity.module.css'
+
+export const dynamic = 'force-dynamic'
+
+type ActivityRow = {
+  id: string
+  created_at: string | null
+  admin_user_id: string | null
+  event_type: string
+  entity_type: string
+  entity_id: string
+  summary: string
+  details: Record<string, unknown> | null
+}
+
+function formatDateTime(value: string | null) {
+  if (!value) return '—'
+  return new Date(value).toLocaleString('en-AU', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  })
+}
+
+function formatEventType(value: string) {
+  return value.replaceAll('_', ' ')
+}
+
+function formatEntityType(value: string) {
+  return value.replaceAll('_', ' ')
+}
+
+export default async function AdminActivityPage() {
+  await requireAdmin()
+
+  const { data, error } = await supabaseAdmin
+    .from('admin_activity_logs')
+    .select(
+      'id, created_at, admin_user_id, event_type, entity_type, entity_id, summary, details'
+    )
+    .order('created_at', { ascending: false })
+    .limit(100)
+
+  if (error) {
+    return (
+      <main className={styles.page}>
+        <div className={styles.shell}>
+          <div className={styles.errorCard}>
+            Failed to load activity: {error.message}
+          </div>
+        </div>
+      </main>
+    )
+  }
+
+  const rows = (data || []) as ActivityRow[]
+
+  const total = rows.length
+  const stockCount = rows.filter((row) => row.entity_type === 'product').length
+  const orderCount = rows.filter((row) => row.entity_type === 'order').length
+  const wholesaleCount = rows.filter(
+    (row) =>
+      row.entity_type === 'wholesale_request' || row.entity_type === 'customer'
+  ).length
+
+  return (
+    <main className={styles.page}>
+      <div className={styles.shell}>
+        <div className={styles.topBar}>
+          <div>
+            <p className={styles.eyebrow}>Admin</p>
+            <h1 className={styles.title}>Activity</h1>
+            <p className={styles.subtitle}>
+              Recent admin actions across stock, orders, and wholesale.
+            </p>
+          </div>
+        </div>
+
+        <section className={styles.summaryGrid}>
+          <SummaryCard label="Recent Events" value={total} />
+          <SummaryCard label="Stock Activity" value={stockCount} />
+          <SummaryCard label="Order Activity" value={orderCount} />
+          <SummaryCard label="Wholesale Activity" value={wholesaleCount} />
+        </section>
+
+        {rows.length === 0 ? (
+          <div className={styles.emptyCard}>No admin activity recorded yet.</div>
+        ) : (
+          <section className={styles.list}>
+            {rows.map((row) => (
+              <article key={row.id} className={styles.card}>
+                <div className={styles.cardTop}>
+                  <div className={styles.badges}>
+                    <span className={styles.eventBadge}>
+                      {formatEventType(row.event_type)}
+                    </span>
+                    <span className={styles.entityBadge}>
+                      {formatEntityType(row.entity_type)}
+                    </span>
+                  </div>
+
+                  <div className={styles.dateText}>
+                    {formatDateTime(row.created_at)}
+                  </div>
+                </div>
+
+                <h2 className={styles.summary}>{row.summary}</h2>
+
+                <div className={styles.metaGrid}>
+                  <InfoCard label="Entity ID" value={row.entity_id} mono />
+                  <InfoCard
+                    label="Admin User"
+                    value={row.admin_user_id || '—'}
+                    mono
+                  />
+                </div>
+
+                {row.details ? (
+                  <details className={styles.detailsBox}>
+                    <summary className={styles.detailsSummary}>
+                      View details
+                    </summary>
+                    <pre className={styles.detailsPre}>
+                      {JSON.stringify(row.details, null, 2)}
+                    </pre>
+                  </details>
+                ) : null}
+              </article>
+            ))}
+          </section>
+        )}
+      </div>
+    </main>
+  )
+}
+
+function SummaryCard({
+  label,
+  value,
+}: {
+  label: string
+  value: number
+}) {
+  return (
+    <div className={styles.summaryCard}>
+      <div className={styles.summaryLabel}>{label}</div>
+      <div className={styles.summaryValue}>{value}</div>
+    </div>
+  )
+}
+
+function InfoCard({
+  label,
+  value,
+  mono,
+}: {
+  label: string
+  value: string
+  mono?: boolean
+}) {
+  return (
+    <div className={styles.infoCard}>
+      <div className={styles.infoLabel}>{label}</div>
+      <div className={`${styles.infoValue} ${mono ? styles.mono : ''}`}>
+        {value}
+      </div>
+    </div>
+  )
+}
+
+customers/page:
+import { requireAdmin } from '@/lib/auth'
+import { supabaseAdmin } from '@/lib/supabaseAdmin'
+
+import CustomerAdminList from './CustomerAdminList'
+import styles from './customers.module.css'
+
+export const dynamic = 'force-dynamic'
+
+type ProfileRow = {
+  id: string
+  email: string | null
+  role: string
+  created_at: string | null
+}
+
+export default async function AdminCustomersPage() {
+  await requireAdmin()
+
+  const { data, error } = await supabaseAdmin
+    .from('profiles')
+    .select('id, email, role, created_at')
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    return (
+      <main className={styles.page}>
+        <div className={styles.shell}>
+          
+          <div className={styles.errorCard}>
+            Failed to load customers: {error.message}
+          </div>
+        </div>
+      </main>
+    )
+  }
+
+  return (
+    <main className={styles.page}>
+      <div className={styles.shell}>
+     
+        <CustomerAdminList initialCustomers={(data || []) as ProfileRow[]} />
+      </div>
+    </main>
+  )
+}
+
+Customers/customerAdminList:
+'use client'
+
+import { useMemo, useState } from 'react'
+import styles from './customers.module.css'
+
+type ProfileRow = {
+  id: string
+  email: string | null
+  role: string
+  created_at: string | null
+}
+
+function formatDate(value: string | null) {
+  if (!value) return '—'
+  return new Date(value).toLocaleString('en-AU', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  })
+}
+
+export default function CustomerAdminList({
+  initialCustomers,
+}: {
+  initialCustomers: ProfileRow[]
+}) {
+  const [query, setQuery] = useState('')
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return initialCustomers
+
+    return initialCustomers.filter((customer) =>
+      [customer.email || '', customer.role || '', customer.id]
+        .join(' ')
+        .toLowerCase()
+        .includes(q)
+    )
+  }, [initialCustomers, query])
+
+  const customerCount = initialCustomers.filter((c) => c.role === 'customer').length
+  const wholesaleCount = initialCustomers.filter((c) => c.role === 'wholesale').length
+  const adminCount = initialCustomers.filter((c) => c.role === 'admin').length
+
+  return (
+    <div className={styles.layout}>
+      <div className={styles.topBar}>
+        <div>
+          <p className={styles.eyebrow}>Admin</p>
+          <h1 className={styles.title}>Customers</h1>
+          <p className={styles.subtitle}>
+            Search and review customer, wholesale, and admin accounts.
+          </p>
+        </div>
+      </div>
+
+      <section className={styles.summaryGrid}>
+        <SummaryCard label="Total Accounts" value={initialCustomers.length} />
+        <SummaryCard label="Customers" value={customerCount} />
+        <SummaryCard label="Wholesale" value={wholesaleCount} />
+        <SummaryCard label="Admins" value={adminCount} />
+      </section>
+
+      <div className={styles.card}>
+        <input
+          className={styles.input}
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search by email, role, or user ID"
+        />
+      </div>
+
+      <div className={styles.list}>
+        {filtered.length === 0 ? (
+          <div className={styles.emptyCard}>No matching accounts found.</div>
+        ) : (
+          filtered.map((customer) => (
+         <article key={customer.id} className={styles.card}>
+  <div className={styles.accountHeader}>
+    <div>
+      <h2 className={styles.accountTitle}>{customer.email || 'No email'}</h2>
+      <p className={styles.accountMeta}>
+        Created {formatDate(customer.created_at)}
+      </p>
+    </div>
+
+    <span
+      className={
+        customer.role === 'admin'
+          ? styles.roleAdmin
+          : customer.role === 'wholesale'
+          ? styles.roleWholesale
+          : styles.roleCustomer
+      }
+    >
+      {customer.role}
+    </span>
+  </div>
+
+  <div className={styles.grid}>
+    <Info label="Email" value={customer.email || '—'} />
+    <Info label="Role" value={customer.role} />
+    <Info label="Created" value={formatDate(customer.created_at)} />
+    <Info label="User ID" value={customer.id} mono />
+  </div>
+
+  <div className={styles.actionRow}>
+    <a href={`/admin/customers/${customer.id}`} className={styles.secondaryLink}>
+      Open Customer
+    </a>
+  </div>
+</article>
+          ))
+        )}
+      </div>
+    </div>
+  )
+}
+
+function SummaryCard({
+  label,
+  value,
+}: {
+  label: string
+  value: number
+}) {
+  return (
+    <div className={styles.summaryCard}>
+      <div className={styles.summaryLabel}>{label}</div>
+      <div className={styles.summaryValue}>{value}</div>
+    </div>
+  )
+}
+
+function Info({
+  label,
+  value,
+  mono,
+}: {
+  label: string
+  value: string
+  mono?: boolean
+}) {
+  return (
+    <div className={styles.infoCard}>
+      <div className={styles.infoLabel}>{label}</div>
+      <div className={`${styles.infoValue} ${mono ? styles.mono : ''}`}>
+        {value}
+      </div>
+    </div>
+  )
+}
+
+admin/login/page:
+import { redirect } from 'next/navigation'
+import AdminLoginForm from './AdminLoginForm'
+import { getAdminAuthState } from '@/lib/auth'
+import styles from './login.module.css'
+
+export default async function AdminLoginPage() {
+  const auth = await getAdminAuthState()
+
+  if (auth.isLoggedIn && auth.isAdmin) {
+    redirect('/admin/orders')
+  }
+
+  return (
+    <main className={styles.page}>
+      <div className={styles.card}>
+        <p className={styles.eyebrow}>Admin</p>
+
+        <h1 className={styles.title}>Sign in</h1>
+        <p className={styles.description}>
+          Only admin accounts can access the orders dashboard.
+        </p>
+
+        {auth.isLoggedIn && !auth.isAdmin ? (
+          <div className={styles.errorBox}>
+            You are signed in, but this account does not have admin access.
+          </div>
+        ) : null}
+
+        <AdminLoginForm />
+      </div>
+    </main>
+  )
+}
+
+admin/login/adminloginform:
+'use client'
+
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
+import styles from './login.module.css'
+
+export default function AdminLoginForm() {
+  const router = useRouter()
+  const supabase = createClient()
+
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [errorMessage, setErrorMessage] = useState('')
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setSaving(true)
+    setErrorMessage('')
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    })
+
+    if (error) {
+      setErrorMessage(error.message)
+      setSaving(false)
+      return
+    }
+
+    router.push('/admin/orders')
+    router.refresh()
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className={styles.form}>
+      <input
+        type="email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        placeholder="Admin email"
+        autoComplete="email"
+        required
+        className={styles.input}
+      />
+
+      <input
+        type="password"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        placeholder="Password"
+        autoComplete="current-password"
+        required
+        className={styles.input}
+      />
+
+      <button
+        type="submit"
+        disabled={saving}
+        className={`${styles.primaryButton} ${
+          saving ? styles.primaryButtonDisabled : ''
+        }`}
+      >
+        {saving ? 'Signing in...' : 'Sign in'}
+      </button>
+
+      {errorMessage ? <div className={styles.error}>{errorMessage}</div> : null}
+    </form>
+  )
+}
+orders/page:
+import Link from 'next/link'
+import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { requireAdmin } from '@/lib/auth'
+import OrderStatusForm from './OrderStatusForm'
+import styles from './orders.module.css'
+
+export const dynamic = 'force-dynamic'
+
+type OrderRow = {
+  id: string
+  email: string | null
+  phone: string | null
+  total: number | string | null
+  status: string | null
+  created_at: string | null
+  paid_at: string | null
+  stripe_session_id: string | null
+  refund_status: string | null
+  refunded_at: string | null
+}
+
+type OrderItemRow = {
+  id: string
+  order_id: string
+  product_id: string | null
+  name: string | null
+  price: number | string | null
+  quantity: number | null
+}
+
+function formatMoney(value: number | string | null) {
+  return `$${Number(value || 0).toFixed(2)}`
+}
+
+function formatDate(value: string | null) {
+  if (!value) return '—'
+  return new Date(value).toLocaleString('en-AU', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  })
+}
+
+function hoursSince(value: string | null) {
+  if (!value) return null
+  const created = new Date(value).getTime()
+  const now = Date.now()
+  return Math.floor((now - created) / (1000 * 60 * 60))
+}
+
+function isSameDay(value: string | null, target: Date) {
+  if (!value) return false
+  const date = new Date(value)
+  return (
+    date.getFullYear() === target.getFullYear() &&
+    date.getMonth() === target.getMonth() &&
+    date.getDate() === target.getDate()
+  )
+}
+
+function startOfWeek(date: Date) {
+  const copy = new Date(date)
+  const day = copy.getDay()
+  const diff = day === 0 ? -6 : 1 - day
+  copy.setDate(copy.getDate() + diff)
+  copy.setHours(0, 0, 0, 0)
+  return copy
+}
+
+function isThisWeek(value: string | null, weekStart: Date, now: Date) {
+  if (!value) return false
+  const date = new Date(value)
+  return date >= weekStart && date <= now
+}
+
+const STATUS_OPTIONS = [
+  'pending',
+  'awaiting_payment',
+  'paid',
+  'payment_failed',
+  'stock_issue',
+  'packed',
+  'shipped',
+  'completed',
+  'cancelled',
+  'closed',
+]
+
+const FILTER_OPTIONS = [
+  { value: '', label: 'All filters' },
+  { value: 'failed', label: 'Failed / Cancelled' },
+  { value: 'refunded', label: 'Refunded' },
+]
+
+const PRIORITY_OPTIONS = [
+  { value: '', label: 'All priorities' },
+  { value: 'overdue', label: 'Overdue (24h+)' },
+]
+
+const RANGE_OPTIONS = [
+  { value: '', label: 'All time' },
+  { value: 'today', label: 'Today' },
+  { value: 'week', label: 'This week' },
+]
+
+export default async function AdminOrdersPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{
+    q?: string
+    status?: string
+    filter?: string
+    priority?: string
+    range?: string
+  }>
+}) {
+  await requireAdmin()
+
+  const params = (await searchParams) || {}
+  const q = (params.q || '').trim().toLowerCase()
+  const statusFilter = (params.status || '').trim().toLowerCase()
+  const filter = (params.filter || '').trim().toLowerCase()
+  const priority = (params.priority || '').trim().toLowerCase()
+  const range = (params.range || '').trim().toLowerCase()
+
+  const { data: ordersData, error: ordersError } = await supabaseAdmin
+    .from('orders')
+    .select(
+      'id, email, phone, total, status, created_at, paid_at, stripe_session_id, refund_status, refunded_at'
+    )
+    .order('created_at', { ascending: false })
+
+  if (ordersError) {
+    return (
+      <main className={styles.page}>
+        <div className={styles.shell}>
+          <div className={styles.emptyCard}>
+            Failed to load orders: {ordersError.message}
+          </div>
+        </div>
+      </main>
+    )
+  }
+
+  const orders = (ordersData || []) as OrderRow[]
+  const orderIds = orders.map((order) => order.id)
+
+  let items: OrderItemRow[] = []
+
+  if (orderIds.length > 0) {
+    const { data: itemsData, error: itemsError } = await supabaseAdmin
+      .from('order_items')
+      .select('id, order_id, product_id, name, price, quantity')
+      .in('order_id', orderIds)
+
+    if (itemsError) {
+      return (
+        <main className={styles.page}>
+          <div className={styles.shell}>
+            <div className={styles.emptyCard}>
+              Failed to load order items: {itemsError.message}
+            </div>
+          </div>
+        </main>
+      )
+    }
+
+    items = (itemsData || []) as OrderItemRow[]
+  }
+
+  const itemsByOrderId = new Map<string, OrderItemRow[]>()
+
+  for (const item of items) {
+    const existing = itemsByOrderId.get(item.order_id) || []
+    existing.push(item)
+    itemsByOrderId.set(item.order_id, existing)
+  }
+
+  const now = new Date()
+  const weekStart = startOfWeek(now)
+
+  const filteredOrders = orders.filter((order) => {
+    const normalizedStatus = (order.status || '').toLowerCase()
+    const ageHours = hoursSince(order.created_at)
+
+    const matchesStatus = statusFilter
+      ? normalizedStatus === statusFilter
+      : normalizedStatus !== 'closed'
+
+    const matchesFilter =
+      filter === 'failed'
+        ? normalizedStatus === 'payment_failed' || normalizedStatus === 'cancelled'
+        : filter === 'refunded'
+          ? (order.refund_status || '').toLowerCase() === 'refunded'
+          : true
+
+    const matchesPriority =
+      priority === 'overdue'
+        ? ['pending', 'awaiting_payment', 'paid', 'packed'].includes(
+            normalizedStatus
+          ) && ageHours !== null && ageHours >= 24
+        : true
+
+    const matchesRange =
+      range === 'today'
+        ? isSameDay(order.created_at, now)
+        : range === 'week'
+          ? isThisWeek(order.created_at, weekStart, now)
+          : true
+
+    const haystack = [
+      order.id,
+      order.email || '',
+      order.phone || '',
+      order.status || '',
+      formatMoney(order.total),
+      ...(itemsByOrderId.get(order.id) || []).map((item) => item.name || ''),
+    ]
+      .join(' ')
+      .toLowerCase()
+
+    const matchesQuery = q ? haystack.includes(q) : true
+
+    return (
+      matchesStatus &&
+      matchesFilter &&
+      matchesPriority &&
+      matchesRange &&
+      matchesQuery
+    )
+  })
+
+  const counts = {
+    all: orders.length,
+    paid: orders.filter((o) => o.status === 'paid').length,
+    packed: orders.filter((o) => o.status === 'packed').length,
+    shipped: orders.filter((o) => o.status === 'shipped').length,
+    stock_issue: orders.filter((o) => o.status === 'stock_issue').length,
+    payment_failed: orders.filter((o) => o.status === 'payment_failed').length,
+    closed: orders.filter((o) => o.status === 'closed').length,
+  }
+
+  return (
+    <main className={styles.page}>
+      <div className={styles.shell}>
+        <div className={styles.topBar}>
+          <div>
+            <p className={styles.eyebrow}>Admin</p>
+            <h1 className={styles.title}>Orders Dashboard</h1>
+          </div>
+        </div>
+
+        <section className={styles.summaryGrid}>
+          <SummaryCard label="All Orders" value={counts.all} />
+          <SummaryCard label="Paid" value={counts.paid} />
+          <SummaryCard label="Packed" value={counts.packed} />
+          <SummaryCard label="Shipped" value={counts.shipped} />
+          <SummaryCard label="Stock Issues" value={counts.stock_issue} />
+          <SummaryCard label="Payment Failed" value={counts.payment_failed} />
+          <SummaryCard label="Closed" value={counts.closed} />
+        </section>
+
+        <form method="GET" className={styles.filterForm}>
+          <input
+            type="text"
+            name="q"
+            defaultValue={q}
+            placeholder="Search by email, phone, order id, item name..."
+            className={styles.input}
+          />
+
+          <select
+            name="status"
+            defaultValue={statusFilter}
+            className={styles.select}
+          >
+            <option value="">All statuses</option>
+            {STATUS_OPTIONS.map((status) => (
+              <option key={status} value={status}>
+                {status}
+              </option>
+            ))}
+          </select>
+
+          <select
+            name="filter"
+            defaultValue={filter}
+            className={styles.select}
+          >
+            {FILTER_OPTIONS.map((option) => (
+              <option key={option.value || 'all'} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+
+          <select
+            name="priority"
+            defaultValue={priority}
+            className={styles.select}
+          >
+            {PRIORITY_OPTIONS.map((option) => (
+              <option key={option.value || 'all'} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+
+          <select
+            name="range"
+            defaultValue={range}
+            className={styles.select}
+          >
+            {RANGE_OPTIONS.map((option) => (
+              <option key={option.value || 'all'} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+
+          <button type="submit" className={styles.primaryButton}>
+            Apply
+          </button>
+        </form>
+
+        {filteredOrders.length === 0 ? (
+          <div className={styles.emptyCard}>No matching orders found.</div>
+        ) : (
+          <section className={styles.orderList}>
+            {filteredOrders.map((order) => {
+              const orderItems = itemsByOrderId.get(order.id) || []
+              const itemCount = orderItems.reduce(
+                (sum, item) => sum + Number(item.quantity || 0),
+                0
+              )
+
+              return (
+                <article key={order.id} className={styles.orderCard}>
+                  <div className={styles.orderTop}>
+                    <div>
+                      <div className={styles.orderHeadingRow}>
+                        <h2 className={styles.orderTitle}>
+                          Order {order.id.slice(0, 8)}
+                        </h2>
+
+                        <span className={styles.statusBadge}>
+                          {order.status || 'unknown'}
+                        </span>
+                      </div>
+
+                      <div className={styles.infoGrid}>
+                        <InfoRow label="Customer Email" value={order.email || '—'} />
+                        <InfoRow label="Phone" value={order.phone || '—'} />
+                        <InfoRow label="Total" value={formatMoney(order.total)} />
+                        <InfoRow label="Created" value={formatDate(order.created_at)} />
+                        <InfoRow label="Paid At" value={formatDate(order.paid_at)} />
+                        <InfoRow label="Items" value={String(itemCount)} />
+                        <InfoRow
+                          label="Stripe Session"
+                          value={order.stripe_session_id || '—'}
+                        />
+                      </div>
+
+                      <div className={styles.orderActions}>
+                        <Link
+                          href={`/admin/orders/${order.id}`}
+                          className={styles.secondaryLink}
+                        >
+                          Edit order
+                        </Link>
+                      </div>
+                    </div>
+
+                    <OrderStatusForm
+                      orderId={order.id}
+                      currentStatus={order.status || 'pending'}
+                      statusOptions={STATUS_OPTIONS}
+                    />
+                  </div>
+
+                  <div className={styles.lineItemsSection}>
+                    <h3 className={styles.lineItemsTitle}>Line Items</h3>
+
+                    {orderItems.length === 0 ? (
+                      <p className={styles.mutedText}>No items found.</p>
+                    ) : (
+                      <div className={styles.lineItemsList}>
+                        {orderItems.map((item) => (
+                          <div key={item.id} className={styles.lineItem}>
+                            <div className={styles.lineItemMain}>
+                              <div className={styles.lineItemName}>
+                                {item.name || 'Unnamed item'}
+                              </div>
+                              <div className={styles.lineItemSubtext}>
+                                Product ID: {item.product_id || '—'}
+                              </div>
+                            </div>
+
+                            <div className={styles.lineItemCell}>
+                              Qty: {item.quantity || 0}
+                            </div>
+                            <div className={styles.lineItemCell}>
+                              {formatMoney(item.price)}
+                            </div>
+                            <div className={styles.lineItemCell}>
+                              {formatMoney(
+                                Number(item.price || 0) * Number(item.quantity || 0)
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </article>
+              )
+            })}
+          </section>
+        )}
+      </div>
+    </main>
+  )
+}
+
+function SummaryCard({
+  label,
+  value,
+}: {
+  label: string
+  value: number
+}) {
+  return (
+    <div className={styles.summaryCard}>
+      <div className={styles.summaryLabel}>{label}</div>
+      <div className={styles.summaryValue}>{value}</div>
+    </div>
+  )
+}
+
+function InfoRow({
+  label,
+  value,
+}: {
+  label: string
+  value: string
+}) {
+  return (
+    <div className={styles.infoCard}>
+      <div className={styles.infoLabel}>{label}</div>
+      <div className={styles.infoValue}>{value}</div>
+    </div>
+  )
+}
+
+orders/orderstatusform:
+'use client'
+
+import { useState } from 'react'
+import styles from './orders.module.css'
+
+export default function OrderStatusForm({
+  orderId,
+  currentStatus,
+  statusOptions,
+}: {
+  orderId: string
+  currentStatus: string
+  statusOptions: string[]
+}) {
+  const [status, setStatus] = useState(currentStatus)
+  const [saving, setSaving] = useState(false)
+  const [message, setMessage] = useState('')
+
+  async function handleSave() {
+    setSaving(true)
+    setMessage('')
+
+    const res = await fetch(`/api/admin/orders/${orderId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    })
+
+    const data = await res.json()
+
+    if (!res.ok) {
+      setMessage(data.error || 'Failed to update order')
+      setSaving(false)
+      return
+    }
+
+    setMessage('Saved')
+    setSaving(false)
+  }
+
+  return (
+    <div className={styles.statusForm}>
+      <select
+        value={status}
+        onChange={(e) => setStatus(e.target.value)}
+        className={styles.select}
+      >
+        {statusOptions.map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+      </select>
+
+      <button
+        type="button"
+        onClick={handleSave}
+        disabled={saving}
+        className={styles.primaryButton}
+      >
+        {saving ? 'Saving...' : 'Update Status'}
+      </button>
+
+      {message ? (
+        <div
+          className={
+            message === 'Saved'
+              ? styles.statusMessageSuccess
+              : styles.statusMessageError
+          }
+        >
+          {message}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+products/adminproductlist:
+'use client'
+
+import { useEffect, useMemo, useState } from 'react'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import styles from './products.module.css'
+
+type ProductRow = {
+  id: string
+  name: string | null
+  description: string | null
+  price_retail: number | string | null
+  price_wholesale: number | string | null
+  stock: number | null
+  image_url: string | null
+  active: boolean | null
+  created_at: string | null
+}
+
+type StockAdjustmentRow = {
+  id: string
+  product_id: string
+  admin_user_id: string | null
+  delta: number
+  reason: string | null
+  created_at: string | null
+}
+
+type ProductFormState = {
+  name: string
+  description: string
+  price_retail: string
+  price_wholesale: string
+  stock: string
+  image_url: string
+  active: boolean
+}
+
+type ProductFilter = 'all' | 'low-stock' | 'out-of-stock' | 'inactive'
+
+const emptyForm: ProductFormState = {
+  name: '',
+  description: '',
+  price_retail: '',
+  price_wholesale: '',
+  stock: '',
+  image_url: '',
+  active: true,
+}
+
+function toFormState(product: ProductRow): ProductFormState {
+  return {
+    name: product.name ?? '',
+    description: product.description ?? '',
+    price_retail:
+      product.price_retail === null || product.price_retail === undefined
+        ? ''
+        : String(product.price_retail),
+    price_wholesale:
+      product.price_wholesale === null || product.price_wholesale === undefined
+        ? ''
+        : String(product.price_wholesale),
+    stock:
+      product.stock === null || product.stock === undefined
+        ? ''
+        : String(product.stock),
+    image_url: product.image_url ?? '',
+    active: product.active ?? true,
+  }
+}
+
+function normalizeMoneyInput(value: string) {
+  return value.trim() === '' ? 0 : Number(value)
+}
+
+function normalizeStockInput(value: string) {
+  return value.trim() === '' ? 0 : Number(value)
+}
+
+function formatMoney(value: string | number | null | undefined) {
+  const num = Number(value || 0)
+  return `$${num.toFixed(2)}`
+}
+
+function formatDateTime(value: string | null) {
+  if (!value) return '—'
+  return new Date(value).toLocaleString('en-AU', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  })
+}
+
+function normalizeFilter(value: string): ProductFilter {
+  if (value === 'low-stock') return 'low-stock'
+  if (value === 'out-of-stock') return 'out-of-stock'
+  if (value === 'inactive') return 'inactive'
+  return 'all'
+}
+
+export default function ProductAdminList({
+  initialProducts,
+  stockAdjustments,
+  initialQuery = '',
+  initialFilter = 'all',
+}: {
+  initialProducts: ProductRow[]
+  stockAdjustments: StockAdjustmentRow[]
+  initialQuery?: string
+  initialFilter?: string
+}) {
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+
+  const safeInitialProducts = useMemo(
+    () => (Array.isArray(initialProducts) ? initialProducts : []),
+    [initialProducts]
+  )
+
+  const [products, setProducts] = useState<ProductRow[]>(safeInitialProducts)
+  const [adjustments, setAdjustments] =
+    useState<StockAdjustmentRow[]>(stockAdjustments || [])
+  const [query, setQuery] = useState(initialQuery)
+  const [filter, setFilter] = useState<ProductFilter>(normalizeFilter(initialFilter))
+  const [createForm, setCreateForm] = useState<ProductFormState>(emptyForm)
+  const [createImage, setCreateImage] = useState<File | null>(null)
+  const [createMessage, setCreateMessage] = useState('')
+  const [creating, setCreating] = useState(false)
+
+  useEffect(() => {
+    const nextQuery = searchParams.get('q') || ''
+    const nextFilter = normalizeFilter(searchParams.get('filter') || 'all')
+
+    if (nextQuery !== query) {
+      setQuery(nextQuery)
+    }
+
+    if (nextFilter !== filter) {
+      setFilter(nextFilter)
+    }
+  }, [searchParams])
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const params = new URLSearchParams(searchParams.toString())
+
+      const trimmedQuery = query.trim()
+
+      if (trimmedQuery) {
+        params.set('q', trimmedQuery)
+      } else {
+        params.delete('q')
+      }
+
+      if (filter !== 'all') {
+        params.set('filter', filter)
+      } else {
+        params.delete('filter')
+      }
+
+      const next = params.toString()
+      const current = searchParams.toString()
+
+      if (next !== current) {
+        router.replace(next ? `${pathname}?${next}` : pathname, {
+          scroll: false,
+        })
+      }
+    }, 250)
+
+    return () => window.clearTimeout(timer)
+  }, [query, filter, pathname, router, searchParams])
+
+  const filteredProducts = useMemo(() => {
+    const q = query.trim().toLowerCase()
+
+    return products.filter((product) => {
+      const stock = Number(product.stock || 0)
+      const matchesQuery =
+        !q ||
+        [
+          product.name || '',
+          product.description || '',
+          product.image_url || '',
+          String(product.price_retail || ''),
+          String(product.price_wholesale || ''),
+          String(product.stock || ''),
+          product.active ? 'active' : 'inactive',
+        ]
+          .join(' ')
+          .toLowerCase()
+          .includes(q)
+
+      const matchesFilter =
+        filter === 'low-stock'
+          ? stock > 0 && stock <= 3
+          : filter === 'out-of-stock'
+            ? stock <= 0
+            : filter === 'inactive'
+              ? !product.active
+              : true
+
+      return matchesQuery && matchesFilter
+    })
+  }, [products, query, filter])
+
+  const stats = useMemo(() => {
+    const total = products.length
+    const active = products.filter((product) => !!product.active).length
+    const inactive = products.filter((product) => !product.active).length
+    const lowStock = products.filter((product) => {
+      const stock = Number(product.stock || 0)
+      return stock > 0 && stock <= 5
+    }).length
+    const outOfStock = products.filter(
+      (product) => Number(product.stock || 0) <= 0
+    ).length
+
+    return {
+      total,
+      active,
+      inactive,
+      lowStock,
+      outOfStock,
+    }
+  }, [products])
+
+  async function uploadImage(file: File) {
+    const formData = new FormData()
+    formData.append('file', file)
+
+    const res = await fetch('/api/admin/products/upload', {
+      method: 'POST',
+      body: formData,
+    })
+
+    const data = await res.json()
+
+    if (!res.ok) {
+      throw new Error(data.error || 'Image upload failed')
+    }
+
+    return String(data.url || '')
+  }
+
+  async function handleCreateProduct() {
+    setCreating(true)
+    setCreateMessage('')
+
+    try {
+      const trimmedName = createForm.name.trim()
+
+      if (!trimmedName) {
+        setCreateMessage('Product name is required')
+        setCreating(false)
+        return
+      }
+
+      let imageUrl = createForm.image_url.trim()
+
+      if (createImage) {
+        imageUrl = await uploadImage(createImage)
+      }
+
+      const payload = {
+        name: trimmedName,
+        description: createForm.description.trim() || null,
+        price_retail: normalizeMoneyInput(createForm.price_retail),
+        price_wholesale: normalizeMoneyInput(createForm.price_wholesale),
+        stock: normalizeStockInput(createForm.stock),
+        image_url: imageUrl || null,
+        active: createForm.active,
+      }
+
+      const res = await fetch('/api/admin/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        setCreateMessage(data.error || 'Failed to create product')
+        setCreating(false)
+        return
+      }
+
+      setProducts((current) => [data.product as ProductRow, ...current])
+      setCreateForm(emptyForm)
+      setCreateImage(null)
+      setCreateMessage('Product created')
+    } catch (error) {
+      setCreateMessage(
+        error instanceof Error ? error.message : 'Failed to create product'
+      )
+    } finally {
+      setCreating(false)
+    }
+  }
+
+  async function handleUpdateProduct(
+    id: string,
+    updates: Partial<ProductRow>
+  ) {
+    const res = await fetch(`/api/admin/products/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    })
+
+    const data = await res.json()
+
+    if (!res.ok) {
+      alert(data.error || 'Failed to update product')
+      return
+    }
+
+    setProducts((current) =>
+      current.map((product) =>
+        product.id === id ? (data.product as ProductRow) : product
+      )
+    )
+  }
+
+  async function handleDeleteProduct(id: string) {
+    const confirmed = window.confirm(
+      'Delete this product? This cannot be undone.'
+    )
+
+    if (!confirmed) return
+
+    const res = await fetch(`/api/admin/products/${id}`, {
+      method: 'DELETE',
+    })
+
+    const data = await res.json()
+
+    if (!res.ok) {
+      alert(data.error || 'Failed to delete product')
+      return
+    }
+
+    setProducts((current) => current.filter((product) => product.id !== id))
+    setAdjustments((current) =>
+      current.filter((adjustment) => adjustment.product_id !== id)
+    )
+  }
+
+  function getAdjustmentsForProduct(productId: string) {
+    return adjustments.filter((item) => item.product_id === productId).slice(0, 5)
+  }
+
+  return (
+    <div className={styles.layout}>
+      <section className={styles.summaryGrid}>
+        <SummaryCard label="Total Products" value={stats.total} />
+        <SummaryCard label="Active" value={stats.active} />
+        <SummaryCard label="Inactive" value={stats.inactive} />
+        <SummaryCard label="Low Stock" value={stats.lowStock} />
+        <SummaryCard label="Out of Stock" value={stats.outOfStock} />
+      </section>
+
+      <section className={styles.createCard}>
+        <div className={styles.sectionHeader}>
+          <div>
+            <p className={styles.sectionEyebrow}>Admin</p>
+            <h2 className={styles.sectionTitle}>Create product</h2>
+            <p className={styles.sectionText}>
+              Add a new storefront item with image, pricing and stock.
+            </p>
+          </div>
+        </div>
+
+        <div className={styles.createGrid}>
+          <div className={styles.createMain}>
+            <input
+              type="text"
+              placeholder="Product name"
+              value={createForm.name}
+              onChange={(e) =>
+                setCreateForm((current) => ({
+                  ...current,
+                  name: e.target.value,
+                }))
+              }
+              className={styles.input}
+            />
+
+            <textarea
+              placeholder="Description"
+              value={createForm.description}
+              onChange={(e) =>
+                setCreateForm((current) => ({
+                  ...current,
+                  description: e.target.value,
+                }))
+              }
+              className={styles.textarea}
+            />
+
+            <div className={styles.metricsRow}>
+              <input
+                type="number"
+                step="0.05"
+                placeholder="Retail price"
+                value={createForm.price_retail}
+                onChange={(e) =>
+                  setCreateForm((current) => ({
+                    ...current,
+                    price_retail: e.target.value,
+                  }))
+                }
+                className={styles.input}
+              />
+
+              <input
+                type="number"
+                step="0.05"
+                placeholder="Wholesale price"
+                value={createForm.price_wholesale}
+                onChange={(e) =>
+                  setCreateForm((current) => ({
+                    ...current,
+                    price_wholesale: e.target.value,
+                  }))
+                }
+                className={styles.input}
+              />
+
+              <input
+                type="number"
+                placeholder="Stock"
+                value={createForm.stock}
+                onChange={(e) =>
+                  setCreateForm((current) => ({
+                    ...current,
+                    stock: e.target.value,
+                  }))
+                }
+                className={styles.input}
+              />
+            </div>
+          </div>
+
+          <div className={styles.createSide}>
+            <input
+              type="text"
+              placeholder="Image URL (optional)"
+              value={createForm.image_url}
+              onChange={(e) =>
+                setCreateForm((current) => ({
+                  ...current,
+                  image_url: e.target.value,
+                }))
+              }
+              className={styles.input}
+            />
+
+            <label className={styles.filePicker}>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0] ?? null
+                  setCreateImage(file)
+                }}
+                className={styles.hiddenFileInput}
+              />
+              <span className={styles.filePickerButton}>Choose image</span>
+              <span className={styles.filePickerText}>
+                {createImage ? createImage.name : 'No file selected'}
+              </span>
+            </label>
+
+            <label className={styles.checkboxLabel}>
+              <input
+                type="checkbox"
+                checked={!!createForm.active}
+                onChange={(e) =>
+                  setCreateForm((current) => ({
+                    ...current,
+                    active: e.target.checked,
+                  }))
+                }
+              />
+              Active product
+            </label>
+
+            <button
+              type="button"
+              onClick={handleCreateProduct}
+              disabled={creating}
+              className={styles.primaryButton}
+            >
+              {creating ? 'Creating...' : 'Create product'}
+            </button>
+
+            {createMessage ? (
+              <div className={styles.message}>{createMessage}</div>
+            ) : null}
+          </div>
+        </div>
+      </section>
+
+      <section className={styles.listSection}>
+        <div className={styles.sectionHeader}>
+          <div>
+            <p className={styles.sectionEyebrow}>Manage</p>
+            <h2 className={styles.sectionTitle}>Existing products</h2>
+            <p className={styles.sectionText}>
+              Search, edit pricing, adjust stock and review recent stock history.
+            </p>
+          </div>
+        </div>
+
+        <div className={styles.listToolbar}>
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search name, description, stock or price..."
+            className={styles.input}
+          />
+
+          <select
+            value={filter}
+            onChange={(e) => setFilter(normalizeFilter(e.target.value))}
+            className={styles.input}
+          >
+            <option value="all">All products</option>
+            <option value="low-stock">Low stock</option>
+            <option value="out-of-stock">Out of stock</option>
+            <option value="inactive">Inactive</option>
+          </select>
+        </div>
+
+        <div className={styles.productList}>
+          {filteredProducts.length === 0 ? (
+            <div className={styles.emptyCard}>No matching products found.</div>
+          ) : (
+            filteredProducts.map((product) => (
+              <EditableProductCard
+                key={product.id}
+                product={product}
+                productAdjustments={getAdjustmentsForProduct(product.id)}
+                onSave={handleUpdateProduct}
+                onDelete={handleDeleteProduct}
+                onAdjusted={(adjustment) =>
+                  setAdjustments((current) => [adjustment, ...current])
+                }
+              />
+            ))
+          )}
+        </div>
+      </section>
+    </div>
+  )
+}
+
+function SummaryCard({
+  label,
+  value,
+}: {
+  label: string
+  value: number
+}) {
+  return (
+    <div className={styles.summaryCard}>
+      <div className={styles.summaryLabel}>{label}</div>
+      <div className={styles.summaryValue}>{value}</div>
+    </div>
+  )
+}
+
+function EditableProductCard({
+  product,
+  productAdjustments,
+  onSave,
+  onDelete,
+  onAdjusted,
+}: {
+  product: ProductRow
+  productAdjustments: StockAdjustmentRow[]
+  onSave: (id: string, updates: Partial<ProductRow>) => Promise<void>
+  onDelete: (id: string) => Promise<void>
+  onAdjusted: (adjustment: StockAdjustmentRow) => void
+}) {
+  const [form, setForm] = useState<ProductFormState>(() => toFormState(product))
+  const [saving, setSaving] = useState(false)
+
+  const stockNumber = Number(form.stock || 0)
+  const stockClass =
+    stockNumber <= 0
+      ? styles.stockBadgeOut
+      : stockNumber <= 5
+        ? styles.stockBadgeLow
+        : styles.stockBadgeIn
+
+  async function handleSave() {
+    const trimmedName = form.name.trim()
+
+    if (!trimmedName) {
+      alert('Name is required')
+      return
+    }
+
+    setSaving(true)
+
+    try {
+      await onSave(product.id, {
+        name: trimmedName,
+        description: form.description.trim() || null,
+        price_retail: normalizeMoneyInput(form.price_retail),
+        price_wholesale: normalizeMoneyInput(form.price_wholesale),
+        stock: normalizeStockInput(form.stock),
+        image_url: form.image_url.trim() || null,
+        active: !!form.active,
+      })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <article className={styles.productCard}>
+      <div className={styles.productCardTop}>
+        <div className={styles.productImageWrap}>
+          {form.image_url ? (
+            <img
+              src={form.image_url}
+              alt={form.name || 'Product image'}
+              className={styles.productImage}
+            />
+          ) : (
+            <div className={styles.imagePlaceholder}>No image</div>
+          )}
+        </div>
+
+        <div className={styles.productContent}>
+          <div className={styles.productHeader}>
+            <div className={styles.productHeaderText}>
+              <input
+                type="text"
+                value={form.name}
+                onChange={(e) =>
+                  setForm((current) => ({ ...current, name: e.target.value }))
+                }
+                className={styles.nameInput}
+              />
+
+              <span className={form.active ? styles.activeBadge : styles.inactiveBadge}>
+                {form.active ? 'Active' : 'Inactive'}
+              </span>
+            </div>
+
+            <span className={stockClass}>
+              {stockNumber <= 0
+                ? 'Out of stock'
+                : stockNumber <= 5
+                  ? `Low stock · ${stockNumber}`
+                  : `In stock · ${stockNumber}`}
+            </span>
+          </div>
+
+          <div className={styles.metricCards}>
+            <div className={styles.metricCard}>
+              <span className={styles.metricLabel}>Retail</span>
+              <input
+                type="number"
+                step="0.05"
+                value={form.price_retail || ''}
+                onChange={(e) =>
+                  setForm((current) => ({
+                    ...current,
+                    price_retail: e.target.value,
+                  }))
+                }
+                className={styles.metricInput}
+              />
+              <span className={styles.metricValuePreview}>
+                {formatMoney(form.price_retail)}
+              </span>
+            </div>
+
+            <div className={styles.metricCard}>
+              <span className={styles.metricLabel}>Wholesale</span>
+              <input
+                type="number"
+                step="0.05"
+                value={form.price_wholesale || ''}
+                onChange={(e) =>
+                  setForm((current) => ({
+                    ...current,
+                    price_wholesale: e.target.value,
+                  }))
+                }
+                className={styles.metricInput}
+              />
+              <span className={styles.metricValuePreview}>
+                {formatMoney(form.price_wholesale)}
+              </span>
+            </div>
+
+            <div className={styles.metricCard}>
+              <span className={styles.metricLabel}>Stock</span>
+              <input
+                type="number"
+                value={form.stock || ''}
+                onChange={(e) =>
+                  setForm((current) => ({
+                    ...current,
+                    stock: e.target.value,
+                  }))
+                }
+                className={styles.metricInput}
+              />
+              <span className={styles.metricValuePreview}>
+                {normalizeStockInput(form.stock)}
+              </span>
+            </div>
+          </div>
+
+          <textarea
+            value={form.description}
+            onChange={(e) =>
+              setForm((current) => ({
+                ...current,
+                description: e.target.value,
+              }))
+            }
+            className={styles.textarea}
+            placeholder="Description"
+          />
+
+          <div className={styles.metaRow}>
+            <input
+              type="text"
+              value={form.image_url}
+              onChange={(e) =>
+                setForm((current) => ({
+                  ...current,
+                  image_url: e.target.value,
+                }))
+              }
+              className={styles.input}
+              placeholder="Image URL"
+            />
+
+            <label className={styles.checkboxLabel}>
+              <input
+                type="checkbox"
+                checked={!!form.active}
+                onChange={(e) =>
+                  setForm((current) => ({
+                    ...current,
+                    active: e.target.checked,
+                  }))
+                }
+              />
+              Active
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div className={styles.cardActions}>
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={saving}
+          className={styles.primaryButton}
+        >
+          {saving ? 'Saving...' : 'Save changes'}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => onDelete(product.id)}
+          className={styles.dangerButton}
+        >
+          Delete
+        </button>
+      </div>
+
+      <StockAdjuster
+        productId={product.id}
+        currentStock={Number(form.stock || 0)}
+        onAdjusted={(nextStock, adjustment) => {
+          setForm((current) => ({
+            ...current,
+            stock: String(nextStock),
+          }))
+          onAdjusted(adjustment)
+        }}
+      />
+
+      <div className={styles.historyBlock}>
+        <h3 className={styles.historyTitle}>Recent stock adjustments</h3>
+
+        {productAdjustments.length === 0 ? (
+          <div className={styles.historyEmpty}>No stock history yet.</div>
+        ) : (
+          <div className={styles.historyList}>
+            {productAdjustments.map((item) => (
+              <div key={item.id} className={styles.historyRow}>
+                <div className={styles.historyDelta}>
+                  {item.delta > 0 ? `+${item.delta}` : item.delta}
+                </div>
+                <div className={styles.historyReason}>{item.reason || '—'}</div>
+                <div className={styles.historyDate}>
+                  {formatDateTime(item.created_at)}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </article>
+  )
+}
+
+function StockAdjuster({
+  productId,
+  currentStock,
+  onAdjusted,
+}: {
+  productId: string
+  currentStock: number
+  onAdjusted: (nextStock: number, adjustment: StockAdjustmentRow) => void
+}) {
+  const [delta, setDelta] = useState('')
+  const [reason, setReason] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  async function handleAdjust() {
+    const parsed = Number(delta)
+
+    if (!Number.isInteger(parsed) || parsed === 0) {
+      alert('Enter a non-zero whole number')
+      return
+    }
+
+    setSaving(true)
+
+    try {
+      const res = await fetch(`/api/admin/products/${productId}/stock`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          delta: parsed,
+          reason,
+        }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        alert(data.error || 'Failed to adjust stock')
+        return
+      }
+
+      onAdjusted(Number(data.stock || currentStock), {
+        id: crypto.randomUUID(),
+        product_id: productId,
+        admin_user_id: null,
+        delta: parsed,
+        reason: reason || null,
+        created_at: new Date().toISOString(),
+      })
+
+      setDelta('')
+      setReason('')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className={styles.stockAdjustBox}>
+      <div className={styles.stockAdjustGrid}>
+        <input
+          type="number"
+          value={delta}
+          onChange={(e) => setDelta(e.target.value)}
+          placeholder="Stock delta (+5 / -2)"
+          className={styles.input}
+        />
+
+        <input
+          type="text"
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          placeholder="Reason (damage, manual sale, restock)"
+          className={styles.input}
+        />
+
+        <button
+          type="button"
+          onClick={handleAdjust}
+          disabled={saving}
+          className={styles.primaryButton}
+        >
+          {saving ? 'Updating...' : 'Adjust stock'}
+        </button>
+      </div>
+    </div>
+  )
+}
+products/page:
+import { requireAdmin } from '@/lib/auth'
+import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import ProductAdminList from './ProductAdminList'
+import styles from './products.module.css'
+
+export const dynamic = 'force-dynamic'
+
+type ProductRow = {
+  id: string
+  name: string | null
+  description: string | null
+  price_retail: number | string | null
+  price_wholesale: number | string | null
+  stock: number | null
+  image_url: string | null
+  active: boolean | null
+  created_at: string | null
+}
+
+type StockAdjustmentRow = {
+  id: string
+  product_id: string
+  admin_user_id: string | null
+  delta: number
+  reason: string | null
+  created_at: string | null
+}
+
+export default async function AdminProductsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{
+    q?: string
+    filter?: string
+  }>
+}) {
+  await requireAdmin()
+
+  const params = (await searchParams) || {}
+  const initialQuery = (params.q || '').trim()
+  const initialFilter = (params.filter || '').trim().toLowerCase()
+
+  const { data: productsData, error: productsError } = await supabaseAdmin
+    .from('products')
+    .select(
+      'id, name, description, price_retail, price_wholesale, stock, image_url, active, created_at'
+    )
+    .order('created_at', { ascending: false })
+
+  if (productsError) {
+    return (
+      <main className={styles.page}>
+        <div className={styles.shell}>
+          <div className={styles.errorCard}>
+            Failed to load products: {productsError.message}
+          </div>
+        </div>
+      </main>
+    )
+  }
+
+  const products = (productsData || []) as ProductRow[]
+  const productIds = products.map((product) => product.id)
+
+  let stockAdjustments: StockAdjustmentRow[] = []
+
+  if (productIds.length > 0) {
+    const { data: adjustmentsData, error: adjustmentsError } = await supabaseAdmin
+      .from('stock_adjustments')
+      .select('id, product_id, admin_user_id, delta, reason, created_at')
+      .in('product_id', productIds)
+      .order('created_at', { ascending: false })
+
+    if (!adjustmentsError) {
+      stockAdjustments = (adjustmentsData || []) as StockAdjustmentRow[]
+    }
+  }
+
+  return (
+    <main className={styles.page}>
+      <div className={styles.shell}>
+        <div className={styles.topBar}>
+          <div>
+            <p className={styles.eyebrow}>Admin</p>
+            <h1 className={styles.title}>Products</h1>
+          </div>
+        </div>
+
+        <ProductAdminList
+          initialProducts={products}
+          stockAdjustments={stockAdjustments}
+          initialQuery={initialQuery}
+          initialFilter={initialFilter}
+        />
+      </div>
+    </main>
+  )
+}
+
+wholesale/page:
+import { requireAdmin } from '@/lib/auth'
+import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import styles from './wholesale.module.css'
+import WholesaleAdminPanel from './WholesaleAdminPanel'
+
+export const dynamic = 'force-dynamic'
+
+type WholesaleRequestRow = {
+  id: string
+  user_id: string
+  email: string | null
+  business_name: string
+  contact_name: string | null
+  phone: string | null
+  website: string | null
+  notes: string | null
+  status: string
+  created_at: string | null
+}
+
+type WholesaleAccountRow = {
+  id: string
+  email: string | null
+  role: string
+  created_at: string | null
+}
+
+export default async function AdminWholesalePage({
+  searchParams,
+}: {
+  searchParams?: Promise<{
+    q?: string
+    status?: string
+  }>
+}) {
+  await requireAdmin()
+
+  const params = (await searchParams) || {}
+  const initialQuery = (params.q || '').trim()
+  const initialStatusFilter = (params.status || '').trim().toLowerCase()
+
+  const { data: requestsData, error: requestsError } = await supabaseAdmin
+    .from('wholesale_requests')
+    .select(
+      'id, user_id, email, business_name, contact_name, phone, website, notes, status, created_at'
+    )
+    .order('created_at', { ascending: false })
+
+  if (requestsError) {
+    return (
+      <main className={styles.page}>
+        <div className={styles.shell}>
+          <div className={styles.errorCard}>
+            Failed to load wholesale requests: {requestsError.message}
+          </div>
+        </div>
+      </main>
+    )
+  }
+
+  const { data: accountsData, error: accountsError } = await supabaseAdmin
+    .from('profiles')
+    .select('id, email, role, created_at')
+    .in('role', ['wholesale', 'admin'])
+    .order('created_at', { ascending: false })
+
+  if (accountsError) {
+    return (
+      <main className={styles.page}>
+        <div className={styles.shell}>
+          <div className={styles.errorCard}>
+            Failed to load wholesale accounts: {accountsError.message}
+          </div>
+        </div>
+      </main>
+    )
+  }
+
+  return (
+    <main className={styles.page}>
+      <div className={styles.shell}>
+        <WholesaleAdminPanel
+          requests={(requestsData || []) as WholesaleRequestRow[]}
+          accounts={(accountsData || []) as WholesaleAccountRow[]}
+          initialQuery={initialQuery}
+          initialStatusFilter={initialStatusFilter}
+        />
+      </div>
+    </main>
+  )
+}
+
+wholesale/wholesaleadminpanel:
+'use client'
+
+import { useEffect, useMemo, useState } from 'react'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
+import styles from './wholesale.module.css'
+
+type WholesaleRequestRow = {
+  id: string
+  user_id: string
+  email: string | null
+  business_name: string
+  contact_name: string | null
+  phone: string | null
+  website: string | null
+  notes: string | null
+  status: string
+  created_at: string | null
+}
+
+type WholesaleAccountRow = {
+  id: string
+  email: string | null
+  role: string
+  created_at: string | null
+}
+
+type StatusFilter = 'all' | 'pending' | 'approved' | 'rejected'
+
+function formatDate(value: string | null) {
+  if (!value) return '—'
+  return new Date(value).toLocaleString('en-AU', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  })
+}
+
+function normalizeStatusFilter(value: string): StatusFilter {
+  if (value === 'pending') return 'pending'
+  if (value === 'approved') return 'approved'
+  if (value === 'rejected') return 'rejected'
+  return 'all'
+}
+
+export default function WholesaleAdminPanel({
+  requests,
+  accounts,
+  initialQuery = '',
+  initialStatusFilter = 'all',
+}: {
+  requests: WholesaleRequestRow[]
+  accounts: WholesaleAccountRow[]
+  initialQuery?: string
+  initialStatusFilter?: string
+}) {
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+
+  const [requestRows, setRequestRows] = useState(requests)
+  const [accountRows, setAccountRows] = useState(accounts)
+  const [busyId, setBusyId] = useState<string | null>(null)
+  const [query, setQuery] = useState(initialQuery)
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>(
+    normalizeStatusFilter(initialStatusFilter)
+  )
+  const [toast, setToast] = useState('')
+
+  useEffect(() => {
+    const nextQuery = searchParams.get('q') || ''
+    const nextStatus = normalizeStatusFilter(searchParams.get('status') || 'all')
+
+    if (nextQuery !== query) {
+      setQuery(nextQuery)
+    }
+
+    if (nextStatus !== statusFilter) {
+      setStatusFilter(nextStatus)
+    }
+  }, [searchParams])
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const params = new URLSearchParams(searchParams.toString())
+
+      const trimmedQuery = query.trim()
+
+      if (trimmedQuery) {
+        params.set('q', trimmedQuery)
+      } else {
+        params.delete('q')
+      }
+
+      if (statusFilter !== 'all') {
+        params.set('status', statusFilter)
+      } else {
+        params.delete('status')
+      }
+
+      const next = params.toString()
+      const current = searchParams.toString()
+
+      if (next !== current) {
+        router.replace(next ? `${pathname}?${next}` : pathname, {
+          scroll: false,
+        })
+      }
+    }, 250)
+
+    return () => window.clearTimeout(timer)
+  }, [query, statusFilter, pathname, router, searchParams])
+
+  useEffect(() => {
+    const supabase = createClient()
+
+    const wholesaleRequestsChannel = supabase
+      .channel('admin-wholesale-requests-live')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'wholesale_requests',
+        },
+        async () => {
+          const { data, error } = await supabase
+            .from('wholesale_requests')
+            .select(
+              'id, user_id, email, business_name, contact_name, phone, website, notes, status, created_at'
+            )
+            .order('created_at', { ascending: false })
+
+          if (error) {
+            console.error('Failed to refresh wholesale requests:', error)
+            return
+          }
+
+          setRequestRows((data || []) as WholesaleRequestRow[])
+        }
+      )
+      .subscribe()
+
+    const profilesChannel = supabase
+      .channel('admin-wholesale-accounts-live')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'profiles',
+        },
+        async () => {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('id, email, role, created_at')
+            .in('role', ['wholesale', 'admin'])
+            .order('created_at', { ascending: false })
+
+          if (error) {
+            console.error('Failed to refresh wholesale accounts:', error)
+            return
+          }
+
+          setAccountRows((data || []) as WholesaleAccountRow[])
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(wholesaleRequestsChannel)
+      supabase.removeChannel(profilesChannel)
+    }
+  }, [])
+
+  const filteredRequests = useMemo(() => {
+    const q = query.trim().toLowerCase()
+
+    return requestRows.filter((request) => {
+      const matchesStatus =
+        statusFilter === 'all' ? true : request.status === statusFilter
+
+      const haystack = [
+        request.business_name,
+        request.email || '',
+        request.contact_name || '',
+        request.phone || '',
+        request.website || '',
+        request.notes || '',
+        request.user_id,
+        request.status,
+      ]
+        .join(' ')
+        .toLowerCase()
+
+      const matchesQuery = q ? haystack.includes(q) : true
+      return matchesStatus && matchesQuery
+    })
+  }, [requestRows, query, statusFilter])
+
+  const pendingRequests = useMemo(
+    () => filteredRequests.filter((request) => request.status === 'pending'),
+    [filteredRequests]
+  )
+
+  const processedRequests = useMemo(
+    () => filteredRequests.filter((request) => request.status !== 'pending'),
+    [filteredRequests]
+  )
+
+  const filteredAccounts = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return accountRows
+
+    return accountRows.filter((account) =>
+      [account.email || '', account.role, account.id]
+        .join(' ')
+        .toLowerCase()
+        .includes(q)
+    )
+  }, [accountRows, query])
+
+  function showToast(text: string) {
+    setToast(text)
+    window.setTimeout(() => setToast(''), 2000)
+  }
+
+  async function handleRequestAction(id: string, action: 'approve' | 'reject') {
+    setBusyId(id)
+
+    try {
+      const res = await fetch(`/api/admin/wholesale-requests/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      })
+
+      const data = await res.json().catch(() => null)
+
+      if (!res.ok) {
+        alert(data?.error || `Failed to ${action} request`)
+        return
+      }
+
+      if (action === 'approve') {
+        showToast('Request approved')
+      } else {
+        showToast('Request rejected')
+      }
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  async function handleDowngrade(userId: string) {
+    const confirmed = window.prompt(
+      'Type REMOVE to confirm removing wholesale access'
+    )
+    if (confirmed !== 'REMOVE') return
+
+    setBusyId(userId)
+
+    try {
+      const res = await fetch(`/api/admin/customers/${userId}/role`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: 'customer' }),
+      })
+
+      const data = await res.json().catch(() => null)
+
+      if (!res.ok) {
+        alert(data?.error || 'Failed to update role')
+        return
+      }
+
+      setAccountRows((current) =>
+        current.filter((account) => account.id !== userId)
+      )
+
+      setRequestRows((current) =>
+        current.filter(
+          (request) => !(request.user_id === userId && request.status === 'approved')
+        )
+      )
+
+      showToast('Wholesale access removed')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  async function handleDeleteRequest(requestId: string) {
+    const confirmed = window.prompt(
+      'Type DELETE to confirm removing this request'
+    )
+    if (confirmed !== 'DELETE') return
+
+    setBusyId(requestId)
+
+    try {
+      const res = await fetch(`/api/admin/wholesale-requests/${requestId}`, {
+        method: 'DELETE',
+      })
+
+      const data = await res.json().catch(() => null)
+
+      if (!res.ok) {
+        alert(data?.error || 'Failed to delete request')
+        return
+      }
+
+      setRequestRows((current) =>
+        current.filter((request) => request.id !== requestId)
+      )
+
+      showToast('Request deleted')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  return (
+    <div className={styles.layout}>
+      <div className={styles.topBar}>
+        <div>
+          <p className={styles.eyebrow}>Admin</p>
+          <h1 className={styles.title}>Wholesale</h1>
+          <p className={styles.subtitle}>
+            Review incoming requests and manage approved wholesale access.
+          </p>
+        </div>
+      </div>
+
+      <section className={styles.summaryGrid}>
+        <SummaryCard
+          label="Pending Requests"
+          value={requestRows.filter((r) => r.status === 'pending').length}
+        />
+        <SummaryCard label="Approved Accounts" value={accountRows.length} />
+        <SummaryCard
+          label="Processed Requests"
+          value={requestRows.filter((r) => r.status !== 'pending').length}
+        />
+      </section>
+
+      <section className={styles.filterBar}>
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search business, email, phone, notes, user ID..."
+          className={styles.input}
+        />
+
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(normalizeStatusFilter(e.target.value))}
+          className={styles.select}
+        >
+          <option value="all">All request statuses</option>
+          <option value="pending">Pending</option>
+          <option value="approved">Approved</option>
+          <option value="rejected">Rejected</option>
+        </select>
+      </section>
+
+      <section className={styles.sectionBlock}>
+        <div className={styles.sectionHeader}>
+          <h2 className={styles.sectionTitle}>Pending Requests</h2>
+        </div>
+
+        {pendingRequests.length === 0 ? (
+          <div className={styles.emptyCard}>No pending wholesale requests.</div>
+        ) : (
+          <div className={styles.requestList}>
+            {pendingRequests.map((request) => {
+            const isBusy = busyId === request.id
+
+              return (
+                <article key={request.id} className={styles.requestCard}>
+                  <div className={styles.requestHeader}>
+                    <div>
+                      <h3 className={styles.requestTitle}>
+                        {request.business_name}
+                      </h3>
+                      <p className={styles.requestMeta}>
+                        Submitted {formatDate(request.created_at)}
+                      </p>
+                    </div>
+
+                    <span className={styles.statusPending}>pending</span>
+                  </div>
+
+                  <div className={styles.infoGrid}>
+                    <InfoCard label="Email" value={request.email || '—'} />
+                    <InfoCard
+                      label="Contact"
+                      value={request.contact_name || '—'}
+                    />
+                    <InfoCard label="Phone" value={request.phone || '—'} />
+                    <InfoCard label="Website" value={request.website || '—'} />
+                    <InfoCard label="User ID" value={request.user_id} mono />
+                  </div>
+
+                  {request.notes ? (
+                    <div className={styles.notesBox}>
+                      <div className={styles.notesLabel}>Notes</div>
+                      <div className={styles.notesText}>{request.notes}</div>
+                    </div>
+                  ) : null}
+
+                  <div className={styles.actionRow}>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleRequestAction(request.id, 'approve')
+                      }
+                      disabled={isBusy}
+                      className={styles.approveButton}
+                    >
+                      {isBusy ? 'Working...' : 'Approve'}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleRequestAction(request.id, 'reject')
+                      }
+                      disabled={isBusy}
+                      className={styles.rejectButton}
+                    >
+                      {isBusy ? 'Working...' : 'Reject'}
+                    </button>
+                  </div>
+                </article>
+              )
+            })}
+          </div>
+        )}
+      </section>
+
+      <section className={styles.sectionBlock}>
+        <div className={styles.sectionHeader}>
+          <h2 className={styles.sectionTitle}>Approved Accounts</h2>
+        </div>
+
+        {filteredAccounts.length === 0 ? (
+          <div className={styles.emptyCard}>
+            No approved wholesale accounts found.
+          </div>
+        ) : (
+          <div className={styles.accountList}>
+            {filteredAccounts.map((account) => {
+              const isBusy = busyId === account.id
+
+              return (
+                <article key={account.id} className={styles.accountCard}>
+                  <div className={styles.accountHeader}>
+                    <div>
+                      <h3 className={styles.accountTitle}>
+                        {account.email || 'No email'}
+                      </h3>
+                      <p className={styles.accountMeta}>
+                        Created {formatDate(account.created_at)}
+                      </p>
+                    </div>
+
+                    <span
+                      className={
+                        account.role === 'admin'
+                          ? styles.roleAdmin
+                          : styles.roleWholesale
+                      }
+                    >
+                      {account.role}
+                    </span>
+                  </div>
+
+                  <div className={styles.infoGrid}>
+                    <InfoCard label="Email" value={account.email || '—'} />
+                    <InfoCard label="Role" value={account.role} />
+                    <InfoCard
+                      label="Created"
+                      value={formatDate(account.created_at)}
+                    />
+                    <InfoCard label="User ID" value={account.id} mono />
+                  </div>
+
+                  {account.role === 'wholesale' ? (
+                    <div className={styles.actionRow}>
+                      <button
+                        type="button"
+                        onClick={() => handleDowngrade(account.id)}
+                        disabled={isBusy}
+                        className={styles.rejectButton}
+                      >
+                        {isBusy ? 'Working...' : 'Remove Wholesale Access'}
+                      </button>
+                    </div>
+                  ) : null}
+                </article>
+              )
+            })}
+          </div>
+        )}
+      </section>
+
+      {processedRequests.length > 0 ? (
+        <section className={styles.sectionBlock}>
+          <div className={styles.sectionHeader}>
+            <h2 className={styles.sectionTitle}>Processed Requests</h2>
+          </div>
+
+          <div className={styles.requestList}>
+            {processedRequests.map((request) => {
+              const isBusy = busyId === request.id
+
+              return (
+                <article key={request.id} className={styles.requestCard}>
+                  <div className={styles.requestHeader}>
+                    <div>
+                      <h3 className={styles.requestTitle}>
+                        {request.business_name}
+                      </h3>
+                      <p className={styles.requestMeta}>
+                        Submitted {formatDate(request.created_at)}
+                      </p>
+                    </div>
+
+                    <span
+                      className={
+                        request.status === 'approved'
+                          ? styles.statusApproved
+                          : styles.statusRejected
+                      }
+                    >
+                      {request.status}
+                    </span>
+                  </div>
+
+                  <div className={styles.infoGrid}>
+                    <InfoCard label="Email" value={request.email || '—'} />
+                    <InfoCard
+                      label="Contact"
+                      value={request.contact_name || '—'}
+                    />
+                    <InfoCard label="Phone" value={request.phone || '—'} />
+                    <InfoCard label="Website" value={request.website || '—'} />
+                  </div>
+
+                  <div className={styles.actionRow}>
+                    {request.status === 'approved' ? (
+                      <button
+                        type="button"
+                        onClick={() => handleDowngrade(request.user_id)}
+                        disabled={isBusy}
+                        className={styles.rejectButton}
+                      >
+                        {isBusy ? 'Working...' : 'Remove Wholesale Access'}
+                      </button>
+                    ) : null}
+
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteRequest(request.id)}
+                      disabled={isBusy}
+                      className={styles.deleteButton}
+                    >
+                      {isBusy ? 'Working...' : 'Delete Request'}
+                    </button>
+                  </div>
+                </article>
+              )
+            })}
+          </div>
+        </section>
+      ) : null}
+
+      {toast ? <div className={styles.toast}>{toast}</div> : null}
+    </div>
+  )
+}
+
+function SummaryCard({
+  label,
+  value,
+}: {
+  label: string
+  value: number
+}) {
+  return (
+    <div className={styles.summaryCard}>
+      <div className={styles.summaryLabel}>{label}</div>
+      <div className={styles.summaryValue}>{value}</div>
+    </div>
+  )
+}
+
+function InfoCard({
+  label,
+  value,
+  mono,
+}: {
+  label: string
+  value: string
+  mono?: boolean
+}) {
+  return (
+    <div className={styles.infoCard}>
+      <div className={styles.infoLabel}>{label}</div>
+      <div className={`${styles.infoValue} ${mono ? styles.mono : ''}`}>
+        {value}
+      </div>
+    </div>
+  )
+}

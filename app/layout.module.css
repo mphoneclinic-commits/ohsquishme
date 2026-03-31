@@ -121,6 +121,7 @@
   min-height: 40px;
   transition: all 0.18s ease;
   white-space: nowrap;
+  background: transparent;
 }
 
 .navLink:hover {
@@ -137,34 +138,32 @@
 
 .cartLink {
   text-decoration: none;
-  padding: 10px 16px;
+  padding: 10px 14px;
   border-radius: 999px;
   font-weight: 700;
   font-size: 14px;
   white-space: nowrap;
   background: linear-gradient(135deg, #ff6fa5, #ff8fb8);
   color: #fff;
-  border: none;
-  box-shadow: 0 6px 16px rgba(255, 105, 160, 0.25);
+  border: 1px solid transparent;
+  box-shadow: 0 6px 16px rgba(255, 105, 160, 0.2);
   transition:
     transform 0.15s ease,
     box-shadow 0.15s ease,
-    opacity 0.15s ease;
+    opacity 0.15s ease,
+    background 0.15s ease,
+    border-color 0.15s ease;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 42px;
+  min-height: 40px;
+  gap: 8px;
 }
-
-.cartLinkPulse {
-  animation: cartPulse 0.32s ease;
-}
-
 
 .cartLink:hover {
   transform: translateY(-1px);
-  box-shadow: 0 10px 22px rgba(255, 105, 160, 0.35);
-  opacity: 0.95;
+  box-shadow: 0 9px 20px rgba(255, 105, 160, 0.28);
+  opacity: 0.97;
 }
 
 .cartIcon {
@@ -193,18 +192,6 @@
 
 .cartLinkPulse {
   animation: cartPulse 0.32s ease;
-}
-
-@keyframes cartPulse {
-  0% {
-    transform: scale(1);
-  }
-  45% {
-    transform: scale(1.08);
-  }
-  100% {
-    transform: scale(1);
-  }
 }
 
 @keyframes cartPulse {
@@ -286,18 +273,15 @@
   .cartLink {
     font-size: 13px;
     padding: 10px 13px;
+    min-height: 38px;
   }
-.cartLink {
-  font-size: 13px;
-  padding: 10px 13px;
-}
 
-.cartCount {
-  min-width: 20px;
-  height: 20px;
-  font-size: 11px;
-  padding: 0 6px;
-}
+  .cartCount {
+    min-width: 20px;
+    height: 20px;
+    font-size: 11px;
+    padding: 0 6px;
+  }
 }
 
 @media (max-width: 480px) {
@@ -316,13 +300,43 @@
 
   .navGroup {
     width: 100%;
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
   }
 
-  .navLink,
+  .navLink {
+    min-width: 120px;
+    padding: 10px 16px;
+    background: #fff;
+    border: 1px solid #f1dce5;
+    box-shadow: 0 2px 8px rgba(30, 18, 24, 0.03);
+  }
+
+  .navLinkActive {
+    background: #ffe9f1;
+    border-color: #f3d4e1;
+  }
+
   .cartLink {
-    width: 100%;
+    width: auto;
+    min-width: 124px;
+    padding: 10px 16px;
+    background: #fff0f6;
+    color: #d63384;
+    border: 1px solid #f3c7d9;
+    box-shadow: 0 4px 12px rgba(255, 105, 160, 0.1);
+  }
+
+  .cartLink:hover {
+    box-shadow: 0 6px 14px rgba(255, 105, 160, 0.14);
+    background: #ffe7f1;
+    color: #c92a78;
+  }
+
+  .cartCount {
+    background: #d63384;
+    color: #fff;
   }
 }

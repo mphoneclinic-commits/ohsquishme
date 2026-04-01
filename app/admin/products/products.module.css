@@ -430,17 +430,35 @@
 }
 
 @media (max-width: 980px) {
-  .createGrid,
-  .productCardTop,
-  .metricCards,
-  .metricsRow,
-  .stockAdjustGrid {
+   .page {
+    padding: 24px 14px 40px;
+  }
+ 
+  .historyRow {
     grid-template-columns: 1fr;
   }
 
-  .metaRow {
-    grid-template-columns: 1fr;
+  .historyDate {
+    text-align: left;
   }
+
+  .nameInput {
+    min-width: 0;
+    font-size: 1.45rem;
+  }
+.productImageWrap {
+  border-radius: 12px;
+  overflow: hidden;
+  background: #f5f1f3;
+  border: 1px solid #f0e5ea;
+}
+
+.productImage {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  display: block;
+}
 }
 
 @media (max-width: 760px) {
@@ -460,4 +478,17 @@
     min-width: 0;
     font-size: 1.45rem;
   }
+.productImageWrap {
+  border-radius: 12px;
+  overflow: hidden;
+  background: #f5f1f3;
+  border: 1px solid #f0e5ea;
+}
+
+.productImage {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  display: block;
+}
 }

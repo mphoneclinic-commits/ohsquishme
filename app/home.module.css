@@ -52,7 +52,7 @@
 
 .cta {
   margin: 6px 0 0;
-  padding: 13px 18px;
+  padding: 7px 12px;
   border-radius: 14px;
   background: linear-gradient(135deg, #ff6fa5, #ff8fb8);
   color: #fff;
@@ -62,7 +62,7 @@
 
 .ctaSecondary {
   margin: 6px 0 0;
-  padding: 13px 18px;
+  padding: 7px 12px;
   border-radius: 14px;
   border: 1px solid #eadce3;
   background: #fff;
@@ -98,6 +98,12 @@
   gap: 0;
 }
 
+.cardContent {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+}
+
 .cardLinkWrap {
   text-decoration: none;
   color: inherit;
@@ -118,7 +124,7 @@
 .imagePlaceholder {
   width: 100%;
   aspect-ratio: 1 / 1;
-  display: grid;
+  display: flex;
   place-items: center;
   background: #f0edf0;
   color: #7a6f76;
@@ -155,6 +161,12 @@
   margin: 14px 14px 6px;
   font-size: 1rem;
   color: #2d2428;
+
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 2.6em;
 }
 
 .card p {
@@ -255,4 +267,20 @@
   .aboutInner {
     padding: 24px 18px;
   }
+
+.heroActions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.cta,
+.ctaSecondary
+{
+ 
+  display: none;
+
+}
+
 }

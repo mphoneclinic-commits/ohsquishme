@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "import:etsy": "node scripts/import-etsy-to-supabase.mjs"
+
   },
   "dependencies": {
     "@supabase/ssr": "^0.9.0",

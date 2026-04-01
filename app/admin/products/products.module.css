@@ -430,40 +430,96 @@
 }
 
 @media (max-width: 980px) {
-   .page {
-    padding: 24px 14px 40px;
+  .page {
+    padding: 24px 16px 40px;
   }
- 
-  .historyRow {
+
+  .createGrid {
     grid-template-columns: 1fr;
   }
 
-  .historyDate {
-    text-align: left;
+  .productCardTop {
+    grid-template-columns: 170px minmax(0, 1fr);
+    gap: 16px;
   }
 
   .nameInput {
     min-width: 0;
+    max-width: 100%;
     font-size: 1.45rem;
   }
-.productImageWrap {
-  border-radius: 12px;
-  overflow: hidden;
-  background: #f5f1f3;
-  border: 1px solid #f0e5ea;
-}
 
-.productImage {
-  width: 100%;
-  aspect-ratio: 1 / 1;
-  object-fit: cover;
-  display: block;
-}
+  .stockAdjustGrid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .stockAdjustGrid > :last-child {
+    grid-column: 1 / -1;
+  }
+
+  .historyRow {
+    grid-template-columns: 80px minmax(0, 1fr);
+  }
+
+  .historyDate {
+    grid-column: 1 / -1;
+    text-align: left;
+  }
 }
 
 @media (max-width: 760px) {
   .page {
-    padding: 24px 14px 40px;
+    padding: 20px 12px 32px;
+  }
+
+  .title {
+    font-size: 1.7rem;
+  }
+
+  .sectionTitle {
+    font-size: 1.35rem;
+  }
+
+  .summaryGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .createCard,
+  .productCard {
+    padding: 16px;
+  }
+
+  .metricsRow,
+  .metricCards,
+  .metaRow,
+  .stockAdjustGrid,
+  .listToolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .productCardTop {
+    grid-template-columns: 1fr;
+  }
+
+  .productImageWrap {
+    width: 100%;
+    max-width: 240px;
+    margin: 0 auto;
+    border-radius: 14px;
+  }
+
+  .nameInput {
+    font-size: 1.3rem;
+  }
+
+  .cardActions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .primaryButton,
+  .dangerButton {
+    width: 100%;
   }
 
   .historyRow {
@@ -473,22 +529,4 @@
   .historyDate {
     text-align: left;
   }
-
-  .nameInput {
-    min-width: 0;
-    font-size: 1.45rem;
-  }
-.productImageWrap {
-  border-radius: 12px;
-  overflow: hidden;
-  background: #f5f1f3;
-  border: 1px solid #f0e5ea;
-}
-
-.productImage {
-  width: 100%;
-  aspect-ratio: 1 / 1;
-  object-fit: cover;
-  display: block;
-}
 }

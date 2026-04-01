@@ -31,7 +31,7 @@ export default function HomePage() {
       .select('*')
       .eq('active', true)
       .order('created_at', { ascending: false })
-      .limit(6)
+      .limit(4)
 
     if (error) {
       console.error('Failed to load featured products:', error)

@@ -9,6 +9,7 @@ type ProductImageRow = {
   id: string
   image_url: string | null
   sort_order: number | null
+  created_at?: string | null
 }
 
 type ProductRow = {
@@ -21,6 +22,7 @@ type ProductRow = {
   image_url: string | null
   active: boolean | null
   created_at: string | null
+  updated_at?: string | null
   product_images?: ProductImageRow[] | null
 }
 
@@ -44,6 +46,11 @@ type ProductFormState = {
 }
 
 type ProductFilter = 'all' | 'low-stock' | 'out-of-stock' | 'inactive'
+
+type UndoAction = {
+  label: string
+  run: () => Promise<void>
+}
 
 const emptyForm: ProductFormState = {
   name: '',
@@ -143,14 +150,16 @@ export default function ProductAdminList({
   const [creating, setCreating] = useState(false)
   const [pageSize, setPageSize] = useState(10)
   const [currentPage, setCurrentPage] = useState(1)
+  const [undoAction, setUndoAction] = useState<UndoAction | null>(null)
+  const [undoBusy, setUndoBusy] = useState(false)
 
   useEffect(() => {
     const nextQuery = searchParams.get('q') || ''
     const nextFilter = normalizeFilter(searchParams.get('filter') || 'all')
 
-    if (nextQuery !== query) setQuery(nextQuery)
-    if (nextFilter !== filter) setFilter(nextFilter)
-  }, [searchParams, query, filter])
+    setQuery((current) => (current === nextQuery ? current : nextQuery))
+    setFilter((current) => (current === nextFilter ? current : nextFilter))
+  }, [searchParams])
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -274,6 +283,21 @@ export default function ProductAdminList({
     )
   }
 
+  async function runUndo() {
+    if (!undoAction || undoBusy) return
+
+    setUndoBusy(true)
+
+    try {
+      await undoAction.run()
+      setUndoAction(null)
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Failed to undo last action')
+    } finally {
+      setUndoBusy(false)
+    }
+  }
+
   async function uploadImage(file: File) {
     const formData = new FormData()
     formData.append('file', file)
@@ -367,7 +391,7 @@ export default function ProductAdminList({
 
   async function handleDeleteProduct(id: string) {
     const confirmed = window.confirm(
-      'Delete this product? This cannot be undone.'
+      'Delete this product? This cannot be undone unless you use Undo immediately.'
     )
 
     if (!confirmed) return
@@ -383,10 +407,39 @@ export default function ProductAdminList({
       return
     }
 
+    const deletedProduct = data.product as ProductRow
+    const deletedAdjustments = (data.stock_adjustments || []) as StockAdjustmentRow[]
+
     setProducts((current) => current.filter((product) => product.id !== id))
     setAdjustments((current) =>
       current.filter((adjustment) => adjustment.product_id !== id)
     )
+
+    setUndoAction({
+      label: `Deleted ${deletedProduct.name || 'product'}`,
+      run: async () => {
+        const restoreRes = await fetch('/api/admin/products/restore', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            product: deletedProduct,
+            stock_adjustments: deletedAdjustments,
+          }),
+        })
+
+        const restoreData = await restoreRes.json()
+
+        if (!restoreRes.ok) {
+          throw new Error(restoreData.error || 'Failed to restore product')
+        }
+
+        const restoredProduct = restoreData.product as ProductRow
+        const restoredAdjustments = (restoreData.stock_adjustments || []) as StockAdjustmentRow[]
+
+        setProducts((current) => [restoredProduct, ...current])
+        setAdjustments((current) => [...restoredAdjustments, ...current])
+      },
+    })
   }
 
   async function handleAddGalleryImage(productId: string, imageUrl: string) {
@@ -410,6 +463,12 @@ export default function ProductAdminList({
     imageId: string,
     action: 'set_featured' | 'move_left' | 'move_right'
   ) {
+    const targetProduct = products.find((item) => item.id === productId)
+    const previousFeaturedImageId =
+      targetProduct?.product_images?.find(
+        (item) => item.image_url && item.image_url === targetProduct.image_url
+      )?.id || null
+
     const res = await fetch(`/api/admin/products/${productId}/images/${imageId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -423,9 +482,64 @@ export default function ProductAdminList({
     }
 
     mergeProductUpdate(data.product as ProductRow)
+
+    if (action === 'set_featured' && previousFeaturedImageId && previousFeaturedImageId !== imageId) {
+      setUndoAction({
+        label: 'Changed featured image',
+        run: async () => {
+          const undoRes = await fetch(
+            `/api/admin/products/${productId}/images/${previousFeaturedImageId}`,
+            {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action: 'set_featured' }),
+            }
+          )
+
+          const undoData = await undoRes.json()
+
+          if (!undoRes.ok) {
+            throw new Error(undoData.error || 'Failed to undo featured image change')
+          }
+
+          mergeProductUpdate(undoData.product as ProductRow)
+        },
+      })
+    }
+
+    if (action === 'move_left' || action === 'move_right') {
+      const reverseAction = action === 'move_left' ? 'move_right' : 'move_left'
+
+      setUndoAction({
+        label: 'Reordered gallery image',
+        run: async () => {
+          const undoRes = await fetch(
+            `/api/admin/products/${productId}/images/${imageId}`,
+            {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action: reverseAction }),
+            }
+          )
+
+          const undoData = await undoRes.json()
+
+          if (!undoRes.ok) {
+            throw new Error(undoData.error || 'Failed to undo image reorder')
+          }
+
+          mergeProductUpdate(undoData.product as ProductRow)
+        },
+      })
+    }
   }
 
-  async function handleDeleteGalleryImage(productId: string, imageId: string) {
+  async function handleDeleteGalleryImage(
+    productId: string,
+    imageId: string,
+    deletedImage: ProductImageRow,
+    wasFeatured: boolean
+  ) {
     const res = await fetch(`/api/admin/products/${productId}/images/${imageId}`, {
       method: 'DELETE',
     })
@@ -437,6 +551,29 @@ export default function ProductAdminList({
     }
 
     mergeProductUpdate(data.product as ProductRow)
+
+    setUndoAction({
+      label: 'Deleted gallery image',
+      run: async () => {
+        const restoreRes = await fetch(`/api/admin/products/${productId}/images`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            image_url: deletedImage.image_url,
+            sort_order: deletedImage.sort_order ?? 0,
+            set_featured: wasFeatured,
+          }),
+        })
+
+        const restoreData = await restoreRes.json()
+
+        if (!restoreRes.ok) {
+          throw new Error(restoreData.error || 'Failed to restore gallery image')
+        }
+
+        mergeProductUpdate(restoreData.product as ProductRow)
+      },
+    })
   }
 
   function getAdjustmentsForProduct(productId: string) {
@@ -673,6 +810,20 @@ export default function ProductAdminList({
           </div>
         </div>
 
+        {undoAction ? (
+          <div className={styles.undoBar}>
+            <div className={styles.undoText}>{undoAction.label}</div>
+            <button
+              type="button"
+              onClick={runUndo}
+              disabled={undoBusy}
+              className={styles.undoButton}
+            >
+              {undoBusy ? 'Undoing...' : 'Undo last action'}
+            </button>
+          </div>
+        ) : null}
+
         <div className={styles.productList}>
           {filteredProducts.length === 0 ? (
             <div className={styles.emptyCard}>No matching products found.</div>
@@ -687,10 +838,12 @@ export default function ProductAdminList({
                 onAdjusted={(adjustment) =>
                   setAdjustments((current) => [adjustment, ...current])
                 }
+                setUndoAction={setUndoAction}
                 uploadImage={uploadImage}
                 onAddGalleryImage={handleAddGalleryImage}
                 onGalleryAction={handleGalleryAction}
                 onDeleteGalleryImage={handleDeleteGalleryImage}
+                mergeProductUpdate={mergeProductUpdate}
               />
             ))
           )}
@@ -721,16 +874,19 @@ function EditableProductCard({
   onSave,
   onDelete,
   onAdjusted,
+  setUndoAction,
   uploadImage,
   onAddGalleryImage,
   onGalleryAction,
   onDeleteGalleryImage,
+  mergeProductUpdate,
 }: {
   product: ProductRow
   productAdjustments: StockAdjustmentRow[]
   onSave: (id: string, updates: Partial<ProductRow>) => Promise<void>
   onDelete: (id: string) => Promise<void>
   onAdjusted: (adjustment: StockAdjustmentRow) => void
+  setUndoAction: React.Dispatch<React.SetStateAction<UndoAction | null>>
   uploadImage: (file: File) => Promise<string>
   onAddGalleryImage: (productId: string, imageUrl: string) => Promise<void>
   onGalleryAction: (
@@ -738,7 +894,13 @@ function EditableProductCard({
     imageId: string,
     action: 'set_featured' | 'move_left' | 'move_right'
   ) => Promise<void>
-  onDeleteGalleryImage: (productId: string, imageId: string) => Promise<void>
+  onDeleteGalleryImage: (
+    productId: string,
+    imageId: string,
+    deletedImage: ProductImageRow,
+    wasFeatured: boolean
+  ) => Promise<void>
+  mergeProductUpdate: (updated: ProductRow) => void
 }) {
   const [form, setForm] = useState<ProductFormState>(() => toFormState(product))
   const [saving, setSaving] = useState(false)
@@ -846,9 +1008,36 @@ function EditableProductCard({
   }
 
   async function handleSetFeatured(imageId: string) {
+    const previousFeaturedImageId =
+      sortedGalleryRows.find((item) => item.image_url === product.image_url)?.id || null
+
     setGalleryBusy(true)
     try {
       await onGalleryAction(product.id, imageId, 'set_featured')
+
+      if (previousFeaturedImageId && previousFeaturedImageId !== imageId) {
+        setUndoAction({
+          label: 'Changed featured image',
+          run: async () => {
+            const undoRes = await fetch(
+              `/api/admin/products/${product.id}/images/${previousFeaturedImageId}`,
+              {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'set_featured' }),
+              }
+            )
+
+            const undoData = await undoRes.json()
+
+            if (!undoRes.ok) {
+              throw new Error(undoData.error || 'Failed to undo featured image change')
+            }
+
+            mergeProductUpdate(undoData.product as ProductRow)
+          },
+        })
+      }
     } catch (error) {
       alert(error instanceof Error ? error.message : 'Failed to set featured image')
     } finally {
@@ -857,9 +1046,33 @@ function EditableProductCard({
   }
 
   async function handleMove(imageId: string, action: 'move_left' | 'move_right') {
+    const reverseAction = action === 'move_left' ? 'move_right' : 'move_left'
+
     setGalleryBusy(true)
     try {
       await onGalleryAction(product.id, imageId, action)
+
+      setUndoAction({
+        label: 'Reordered gallery image',
+        run: async () => {
+          const undoRes = await fetch(
+            `/api/admin/products/${product.id}/images/${imageId}`,
+            {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action: reverseAction }),
+            }
+          )
+
+          const undoData = await undoRes.json()
+
+          if (!undoRes.ok) {
+            throw new Error(undoData.error || 'Failed to undo image reorder')
+          }
+
+          mergeProductUpdate(undoData.product as ProductRow)
+        },
+      })
     } catch (error) {
       alert(error instanceof Error ? error.message : 'Failed to reorder image')
     } finally {
@@ -867,13 +1080,15 @@ function EditableProductCard({
     }
   }
 
-  async function handleDeleteGallery(imageId: string) {
+  async function handleDeleteGallery(image: ProductImageRow) {
     const confirmed = window.confirm('Delete this gallery image?')
     if (!confirmed) return
 
+    const wasFeatured = image.image_url === product.image_url
+
     setGalleryBusy(true)
     try {
-      await onDeleteGalleryImage(product.id, imageId)
+      await onDeleteGalleryImage(product.id, image.id, image, wasFeatured)
     } catch (error) {
       alert(error instanceof Error ? error.message : 'Failed to delete gallery image')
     } finally {
@@ -1180,7 +1395,7 @@ function EditableProductCard({
 
                           <button
                             type="button"
-                            onClick={() => handleDeleteGallery(image.id)}
+                            onClick={() => handleDeleteGallery(image)}
                             disabled={galleryBusy}
                             className={styles.dangerButton}
                           >
@@ -1220,14 +1435,10 @@ function EditableProductCard({
 
       <StockAdjuster
         productId={product.id}
+        productName={product.name || 'product'}
         currentStock={Number(form.stock || 0)}
-        onAdjusted={(nextStock, adjustment) => {
-          setForm((current) => ({
-            ...current,
-            stock: String(nextStock),
-          }))
-          onAdjusted(adjustment)
-        }}
+        onAdjusted={(adjustment) => onAdjusted(adjustment)}
+        setUndoAction={setUndoAction}
       />
 
       <div className={styles.historyBlock}>
@@ -1257,12 +1468,16 @@ function EditableProductCard({
 
 function StockAdjuster({
   productId,
+  productName,
   currentStock,
   onAdjusted,
+  setUndoAction,
 }: {
   productId: string
+  productName: string
   currentStock: number
-  onAdjusted: (nextStock: number, adjustment: StockAdjustmentRow) => void
+  onAdjusted: (adjustment: StockAdjustmentRow) => void
+  setUndoAction: React.Dispatch<React.SetStateAction<UndoAction | null>>
 }) {
   const [delta, setDelta] = useState('')
   const [reason, setReason] = useState('')
@@ -1295,13 +1510,44 @@ function StockAdjuster({
         return
       }
 
-      onAdjusted(Number(data.stock || currentStock), {
+      onAdjusted({
         id: crypto.randomUUID(),
         product_id: productId,
         admin_user_id: null,
         delta: parsed,
         reason: reason || null,
         created_at: new Date().toISOString(),
+      })
+
+      const originalReason = reason
+
+      setUndoAction({
+        label: `Adjusted stock for ${productName}`,
+        run: async () => {
+          const undoRes = await fetch(`/api/admin/products/${productId}/stock`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              delta: -parsed,
+              reason: `Undo: ${originalReason || 'stock adjustment'}`,
+            }),
+          })
+
+          const undoData = await undoRes.json()
+
+          if (!undoRes.ok) {
+            throw new Error(undoData.error || 'Failed to undo stock adjustment')
+          }
+
+          onAdjusted({
+            id: crypto.randomUUID(),
+            product_id: productId,
+            admin_user_id: null,
+            delta: -parsed,
+            reason: `Undo: ${originalReason || 'stock adjustment'}`,
+            created_at: new Date().toISOString(),
+          })
+        },
       })
 
       setDelta('')

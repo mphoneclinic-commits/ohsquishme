@@ -15,10 +15,12 @@ async function fetchProductWithImages(id: string) {
       image_url,
       active,
       created_at,
+      updated_at,
       product_images (
         id,
         image_url,
-        sort_order
+        sort_order,
+        created_at
       )
     `)
     .eq('id', id)
@@ -138,6 +140,21 @@ export async function DELETE(
       return NextResponse.json({ error: 'Missing product id' }, { status: 400 })
     }
 
+    const { data: product, error: fetchError } = await fetchProductWithImages(id)
+
+    if (fetchError || !product) {
+      return NextResponse.json(
+        { error: fetchError?.message || 'Product not found' },
+        { status: 404 }
+      )
+    }
+
+    const { data: stockAdjustments } = await supabaseAdmin
+      .from('stock_adjustments')
+      .select('id, product_id, admin_user_id, delta, reason, created_at')
+      .eq('product_id', id)
+      .order('created_at', { ascending: false })
+
     const { error } = await supabaseAdmin
       .from('products')
       .delete()
@@ -147,7 +164,11 @@ export async function DELETE(
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({
+      success: true,
+      product,
+      stock_adjustments: stockAdjustments || [],
+    })
   } catch (error) {
     console.error('Product delete error:', error)
     return NextResponse.json(

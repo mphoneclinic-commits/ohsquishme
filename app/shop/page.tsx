@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { useCart } from '@/components/CartProvider'
+import { useAuthRole } from '@/components/AuthProvider'
 import styles from './shop.module.css'
 
 type Product = {
@@ -33,6 +34,7 @@ export default function ShopPage() {
   const [addedMap, setAddedMap] = useState<Record<string, boolean>>({})
 
   const { addItem } = useCart()
+  const { role, loading: loadingRole } = useAuthRole()
 
   useEffect(() => {
     fetchProducts()
@@ -89,6 +91,8 @@ export default function ShopPage() {
     return list
   }, [products, search, sortMode])
 
+  const isAdminView = role === 'admin'
+
   function handleQuickAdd(
     event: React.MouseEvent<HTMLButtonElement>,
     product: Product
@@ -121,6 +125,24 @@ export default function ShopPage() {
 
   return (
     <main className={styles.page}>
+      {isAdminView ? (
+        <section className={styles.adminBar}>
+          <div className={styles.adminBarText}>
+            <span className={styles.adminBarEyebrow}>Admin</span>
+            <span className={styles.adminBarTitle}>Viewing live shop</span>
+          </div>
+
+          <div className={styles.adminBarActions}>
+            <Link href="/admin" className={styles.adminSecondaryLink}>
+              Back to Admin
+            </Link>
+            <Link href="/admin/products" className={styles.adminPrimaryLink}>
+              Edit Products
+            </Link>
+          </div>
+        </section>
+      ) : null}
+
       <section className={styles.hero}>
         <p className={styles.eyebrow}>Shop</p>
         <h1 className={styles.title}>Cute squishies, gifts and collectible favourites</h1>
@@ -150,19 +172,19 @@ export default function ShopPage() {
         </select>
       </section>
 
-      {loading && <p className={styles.stateText}>Loading products...</p>}
+      {(loading || loadingRole) && <p className={styles.stateText}>Loading products...</p>}
 
-      {!loading && errorMessage && (
+      {!loading && !loadingRole && errorMessage && (
         <p className={styles.error}>Error: {errorMessage}</p>
       )}
 
-      {!loading && !errorMessage && filteredProducts.length === 0 && (
+      {!loading && !loadingRole && !errorMessage && filteredProducts.length === 0 && (
         <div className={styles.emptyCard}>
           <p>No matching products found.</p>
         </div>
       )}
 
-      {!loading && !errorMessage && filteredProducts.length > 0 && (
+      {!loading && !loadingRole && !errorMessage && filteredProducts.length > 0 && (
         <div className={styles.grid}>
           {filteredProducts.map((product) => {
             const isOut = Number(product.stock || 0) <= 0

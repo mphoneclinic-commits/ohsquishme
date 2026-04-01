@@ -3,7 +3,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import styles from './products.module.css'
-import { formatDateTime, formatDate, formatTime, formatRelativeTime } from '@/app/admin/utils'
+import { formatDateTime } from '@/app/admin/utils'
+
+type ProductImageRow = {
+  id: string
+  image_url: string | null
+  sort_order: number | null
+}
 
 type ProductRow = {
   id: string
@@ -15,6 +21,7 @@ type ProductRow = {
   image_url: string | null
   active: boolean | null
   created_at: string | null
+  product_images?: ProductImageRow[] | null
 }
 
 type StockAdjustmentRow = {
@@ -82,12 +89,24 @@ function formatMoney(value: string | number | null | undefined) {
   return `$${num.toFixed(2)}`
 }
 
-
 function normalizeFilter(value: string): ProductFilter {
   if (value === 'low-stock') return 'low-stock'
   if (value === 'out-of-stock') return 'out-of-stock'
   if (value === 'inactive') return 'inactive'
   return 'all'
+}
+
+function getGalleryImages(product: ProductRow, fallbackImageUrl?: string) {
+  const orderedExtras = [...(product.product_images || [])]
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+    .map((item) => item.image_url)
+    .filter((value): value is string => Boolean(value))
+
+  const combined = [fallbackImageUrl ?? product.image_url, ...orderedExtras].filter(
+    (value): value is string => Boolean(value)
+  )
+
+  return Array.from(new Set(combined))
 }
 
 export default function ProductAdminList({
@@ -111,32 +130,31 @@ export default function ProductAdminList({
   )
 
   const [products, setProducts] = useState<ProductRow[]>(safeInitialProducts)
-  const [adjustments, setAdjustments] =
-    useState<StockAdjustmentRow[]>(stockAdjustments || [])
+  const [adjustments, setAdjustments] = useState<StockAdjustmentRow[]>(
+    stockAdjustments || []
+  )
   const [query, setQuery] = useState(initialQuery)
-  const [filter, setFilter] = useState<ProductFilter>(normalizeFilter(initialFilter))
+  const [filter, setFilter] = useState<ProductFilter>(
+    normalizeFilter(initialFilter)
+  )
   const [createForm, setCreateForm] = useState<ProductFormState>(emptyForm)
   const [createImage, setCreateImage] = useState<File | null>(null)
   const [createMessage, setCreateMessage] = useState('')
   const [creating, setCreating] = useState(false)
+  const [pageSize, setPageSize] = useState(10)
+  const [currentPage, setCurrentPage] = useState(1)
 
   useEffect(() => {
     const nextQuery = searchParams.get('q') || ''
     const nextFilter = normalizeFilter(searchParams.get('filter') || 'all')
 
-    if (nextQuery !== query) {
-      setQuery(nextQuery)
-    }
-
-    if (nextFilter !== filter) {
-      setFilter(nextFilter)
-    }
-  }, [searchParams])
+    if (nextQuery !== query) setQuery(nextQuery)
+    if (nextFilter !== filter) setFilter(nextFilter)
+  }, [searchParams, query, filter])
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
       const params = new URLSearchParams(searchParams.toString())
-
       const trimmedQuery = query.trim()
 
       if (trimmedQuery) {
@@ -164,17 +182,24 @@ export default function ProductAdminList({
     return () => window.clearTimeout(timer)
   }, [query, filter, pathname, router, searchParams])
 
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [query, filter, pageSize])
+
   const filteredProducts = useMemo(() => {
     const q = query.trim().toLowerCase()
 
     return products.filter((product) => {
       const stock = Number(product.stock || 0)
+      const gallerySearchText = getGalleryImages(product).join(' ')
+
       const matchesQuery =
         !q ||
         [
           product.name || '',
           product.description || '',
           product.image_url || '',
+          gallerySearchText,
           String(product.price_retail || ''),
           String(product.price_wholesale || ''),
           String(product.stock || ''),
@@ -217,6 +242,37 @@ export default function ProductAdminList({
       outOfStock,
     }
   }, [products])
+
+  const totalPages = useMemo(() => {
+    if (pageSize === -1) return 1
+    return Math.max(1, Math.ceil(filteredProducts.length / pageSize))
+  }, [filteredProducts.length, pageSize])
+
+  useEffect(() => {
+    setCurrentPage((current) => Math.min(current, totalPages))
+  }, [totalPages])
+
+  const paginatedProducts = useMemo(() => {
+    if (pageSize === -1) return filteredProducts
+
+    const start = (currentPage - 1) * pageSize
+    const end = start + pageSize
+    return filteredProducts.slice(start, end)
+  }, [filteredProducts, currentPage, pageSize])
+
+  function mergeProductUpdate(updated: ProductRow) {
+    setProducts((current) =>
+      current.map((product) =>
+        product.id === updated.id
+          ? {
+              ...product,
+              ...updated,
+              product_images: updated.product_images ?? product.product_images ?? [],
+            }
+          : product
+      )
+    )
+  }
 
   async function uploadImage(file: File) {
     const formData = new FormData()
@@ -292,10 +348,7 @@ export default function ProductAdminList({
     }
   }
 
-  async function handleUpdateProduct(
-    id: string,
-    updates: Partial<ProductRow>
-  ) {
+  async function handleUpdateProduct(id: string, updates: Partial<ProductRow>) {
     const res = await fetch(`/api/admin/products/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -309,11 +362,7 @@ export default function ProductAdminList({
       return
     }
 
-    setProducts((current) =>
-      current.map((product) =>
-        product.id === id ? (data.product as ProductRow) : product
-      )
-    )
+    mergeProductUpdate(data.product as ProductRow)
   }
 
   async function handleDeleteProduct(id: string) {
@@ -338,6 +387,56 @@ export default function ProductAdminList({
     setAdjustments((current) =>
       current.filter((adjustment) => adjustment.product_id !== id)
     )
+  }
+
+  async function handleAddGalleryImage(productId: string, imageUrl: string) {
+    const res = await fetch(`/api/admin/products/${productId}/images`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image_url: imageUrl }),
+    })
+
+    const data = await res.json()
+
+    if (!res.ok) {
+      throw new Error(data.error || 'Failed to add gallery image')
+    }
+
+    mergeProductUpdate(data.product as ProductRow)
+  }
+
+  async function handleGalleryAction(
+    productId: string,
+    imageId: string,
+    action: 'set_featured' | 'move_left' | 'move_right'
+  ) {
+    const res = await fetch(`/api/admin/products/${productId}/images/${imageId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action }),
+    })
+
+    const data = await res.json()
+
+    if (!res.ok) {
+      throw new Error(data.error || 'Failed to update gallery image')
+    }
+
+    mergeProductUpdate(data.product as ProductRow)
+  }
+
+  async function handleDeleteGalleryImage(productId: string, imageId: string) {
+    const res = await fetch(`/api/admin/products/${productId}/images/${imageId}`, {
+      method: 'DELETE',
+    })
+
+    const data = await res.json()
+
+    if (!res.ok) {
+      throw new Error(data.error || 'Failed to delete gallery image')
+    }
+
+    mergeProductUpdate(data.product as ProductRow)
   }
 
   function getAdjustmentsForProduct(productId: string) {
@@ -439,7 +538,7 @@ export default function ProductAdminList({
           <div className={styles.createSide}>
             <input
               type="text"
-              placeholder="Image URL (optional)"
+              placeholder="Featured image URL (optional)"
               value={createForm.image_url}
               onChange={(e) =>
                 setCreateForm((current) => ({
@@ -502,7 +601,7 @@ export default function ProductAdminList({
             <p className={styles.sectionEyebrow}>Manage</p>
             <h2 className={styles.sectionTitle}>Existing products</h2>
             <p className={styles.sectionText}>
-              Search, edit pricing, adjust stock and review recent stock history.
+              Search, edit pricing, adjust stock, manage gallery images and review stock history.
             </p>
           </div>
         </div>
@@ -528,11 +627,57 @@ export default function ProductAdminList({
           </select>
         </div>
 
+        <div className={styles.paginationBar}>
+          <label className={styles.paginationControl}>
+            <span>Show</span>
+            <select
+              value={String(pageSize)}
+              onChange={(e) => setPageSize(Number(e.target.value))}
+              className={styles.input}
+            >
+              <option value="10">10</option>
+              <option value="25">25</option>
+              <option value="50">50</option>
+              <option value="-1">All</option>
+            </select>
+          </label>
+
+          <div className={styles.paginationMeta}>
+            {filteredProducts.length === 0
+              ? 'No results'
+              : pageSize === -1
+                ? `Showing all ${filteredProducts.length} products`
+                : `Page ${currentPage} of ${totalPages} · ${filteredProducts.length} results`}
+          </div>
+
+          <div className={styles.paginationActions}>
+            <button
+              type="button"
+              onClick={() => setCurrentPage((current) => Math.max(1, current - 1))}
+              disabled={pageSize === -1 || currentPage <= 1}
+              className={styles.secondaryButton}
+            >
+              Prev
+            </button>
+
+            <button
+              type="button"
+              onClick={() =>
+                setCurrentPage((current) => Math.min(totalPages, current + 1))
+              }
+              disabled={pageSize === -1 || currentPage >= totalPages}
+              className={styles.secondaryButton}
+            >
+              Next
+            </button>
+          </div>
+        </div>
+
         <div className={styles.productList}>
           {filteredProducts.length === 0 ? (
             <div className={styles.emptyCard}>No matching products found.</div>
           ) : (
-            filteredProducts.map((product) => (
+            paginatedProducts.map((product) => (
               <EditableProductCard
                 key={product.id}
                 product={product}
@@ -542,6 +687,10 @@ export default function ProductAdminList({
                 onAdjusted={(adjustment) =>
                   setAdjustments((current) => [adjustment, ...current])
                 }
+                uploadImage={uploadImage}
+                onAddGalleryImage={handleAddGalleryImage}
+                onGalleryAction={handleGalleryAction}
+                onDeleteGalleryImage={handleDeleteGalleryImage}
               />
             ))
           )}
@@ -572,15 +721,36 @@ function EditableProductCard({
   onSave,
   onDelete,
   onAdjusted,
+  uploadImage,
+  onAddGalleryImage,
+  onGalleryAction,
+  onDeleteGalleryImage,
 }: {
   product: ProductRow
   productAdjustments: StockAdjustmentRow[]
   onSave: (id: string, updates: Partial<ProductRow>) => Promise<void>
   onDelete: (id: string) => Promise<void>
   onAdjusted: (adjustment: StockAdjustmentRow) => void
+  uploadImage: (file: File) => Promise<string>
+  onAddGalleryImage: (productId: string, imageUrl: string) => Promise<void>
+  onGalleryAction: (
+    productId: string,
+    imageId: string,
+    action: 'set_featured' | 'move_left' | 'move_right'
+  ) => Promise<void>
+  onDeleteGalleryImage: (productId: string, imageId: string) => Promise<void>
 }) {
   const [form, setForm] = useState<ProductFormState>(() => toFormState(product))
   const [saving, setSaving] = useState(false)
+  const [activeImageIndex, setActiveImageIndex] = useState(0)
+  const [galleryUrl, setGalleryUrl] = useState('')
+  const [galleryFile, setGalleryFile] = useState<File | null>(null)
+  const [galleryBusy, setGalleryBusy] = useState(false)
+
+  useEffect(() => {
+    setForm(toFormState(product))
+    setActiveImageIndex(0)
+  }, [product])
 
   const stockNumber = Number(form.stock || 0)
   const stockClass =
@@ -589,6 +759,38 @@ function EditableProductCard({
       : stockNumber <= 5
         ? styles.stockBadgeLow
         : styles.stockBadgeIn
+
+  const fallbackImageUrl = form.image_url || product.image_url || undefined
+
+  const galleryImages = useMemo(
+    () => getGalleryImages(product, fallbackImageUrl),
+    [product, fallbackImageUrl]
+  )
+
+  const sortedGalleryRows = useMemo(
+    () =>
+      [...(product.product_images || [])].sort(
+        (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)
+      ),
+    [product.product_images]
+  )
+
+  const activeImage =
+    galleryImages[activeImageIndex] || form.image_url || product.image_url || null
+
+  function goPrevImage() {
+    if (galleryImages.length <= 1) return
+    setActiveImageIndex((current) =>
+      current === 0 ? galleryImages.length - 1 : current - 1
+    )
+  }
+
+  function goNextImage() {
+    if (galleryImages.length <= 1) return
+    setActiveImageIndex((current) =>
+      current === galleryImages.length - 1 ? 0 : current + 1
+    )
+  }
 
   async function handleSave() {
     const trimmedName = form.name.trim()
@@ -615,19 +817,133 @@ function EditableProductCard({
     }
   }
 
+  async function handleAddGallery() {
+    const trimmedUrl = galleryUrl.trim()
+
+    if (!trimmedUrl && !galleryFile) {
+      alert('Choose an image file or paste an image URL')
+      return
+    }
+
+    setGalleryBusy(true)
+
+    try {
+      let finalUrl = trimmedUrl
+
+      if (galleryFile) {
+        finalUrl = await uploadImage(galleryFile)
+      }
+
+      await onAddGalleryImage(product.id, finalUrl)
+
+      setGalleryUrl('')
+      setGalleryFile(null)
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Failed to add gallery image')
+    } finally {
+      setGalleryBusy(false)
+    }
+  }
+
+  async function handleSetFeatured(imageId: string) {
+    setGalleryBusy(true)
+    try {
+      await onGalleryAction(product.id, imageId, 'set_featured')
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Failed to set featured image')
+    } finally {
+      setGalleryBusy(false)
+    }
+  }
+
+  async function handleMove(imageId: string, action: 'move_left' | 'move_right') {
+    setGalleryBusy(true)
+    try {
+      await onGalleryAction(product.id, imageId, action)
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Failed to reorder image')
+    } finally {
+      setGalleryBusy(false)
+    }
+  }
+
+  async function handleDeleteGallery(imageId: string) {
+    const confirmed = window.confirm('Delete this gallery image?')
+    if (!confirmed) return
+
+    setGalleryBusy(true)
+    try {
+      await onDeleteGalleryImage(product.id, imageId)
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Failed to delete gallery image')
+    } finally {
+      setGalleryBusy(false)
+    }
+  }
+
   return (
     <article className={styles.productCard}>
       <div className={styles.productCardTop}>
-        <div className={styles.productImageWrap}>
-          {form.image_url ? (
-            <img
-              src={form.image_url}
-              alt={form.name || 'Product image'}
-              className={styles.productImage}
-            />
-          ) : (
-            <div className={styles.imagePlaceholder}>No image</div>
-          )}
+        <div className={styles.productGallery}>
+          <div className={styles.productImageWrap}>
+            {activeImage ? (
+              <>
+                <img
+                  src={activeImage}
+                  alt={form.name || 'Product image'}
+                  className={styles.productImage}
+                />
+
+                {galleryImages.length > 1 ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={goPrevImage}
+                      className={`${styles.galleryArrow} ${styles.galleryArrowLeft}`}
+                      aria-label="Previous image"
+                    >
+                      ‹
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={goNextImage}
+                      className={`${styles.galleryArrow} ${styles.galleryArrowRight}`}
+                      aria-label="Next image"
+                    >
+                      ›
+                    </button>
+                  </>
+                ) : null}
+              </>
+            ) : (
+              <div className={styles.imagePlaceholder}>No image</div>
+            )}
+          </div>
+
+          {galleryImages.length > 1 ? (
+            <div className={styles.galleryThumbRow}>
+              {galleryImages.map((imageUrl, index) => (
+                <button
+                  key={`${imageUrl}-${index}`}
+                  type="button"
+                  onClick={() => setActiveImageIndex(index)}
+                  className={
+                    index === activeImageIndex
+                      ? `${styles.galleryThumbButton} ${styles.galleryThumbButtonActive}`
+                      : styles.galleryThumbButton
+                  }
+                  aria-label={`View image ${index + 1}`}
+                >
+                  <img
+                    src={imageUrl}
+                    alt={`${form.name || 'Product'} thumbnail ${index + 1}`}
+                    className={styles.galleryThumbImage}
+                  />
+                </button>
+              ))}
+            </div>
+          ) : null}
         </div>
 
         <div className={styles.productContent}>
@@ -737,7 +1053,7 @@ function EditableProductCard({
                 }))
               }
               className={styles.input}
-              placeholder="Image URL"
+              placeholder="Featured image URL"
             />
 
             <label className={styles.checkboxLabel}>
@@ -753,6 +1069,132 @@ function EditableProductCard({
               />
               Active
             </label>
+          </div>
+
+          <div className={styles.galleryManager}>
+            <div className={styles.galleryManagerHeader}>
+              <div>
+                <div className={styles.galleryManagerTitle}>Gallery management</div>
+                <div className={styles.galleryManagerText}>
+                  Add, reorder, delete and choose the featured image.
+                </div>
+              </div>
+            </div>
+
+            <div className={styles.galleryAddGrid}>
+              <input
+                type="text"
+                value={galleryUrl}
+                onChange={(e) => setGalleryUrl(e.target.value)}
+                placeholder="Paste image URL"
+                className={styles.input}
+              />
+
+              <label className={styles.filePicker}>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] ?? null
+                    setGalleryFile(file)
+                  }}
+                  className={styles.hiddenFileInput}
+                />
+                <span className={styles.filePickerButton}>Choose image</span>
+                <span className={styles.filePickerText}>
+                  {galleryFile ? galleryFile.name : 'No file selected'}
+                </span>
+              </label>
+
+              <button
+                type="button"
+                onClick={handleAddGallery}
+                disabled={galleryBusy}
+                className={styles.primaryButton}
+              >
+                {galleryBusy ? 'Working...' : 'Add to gallery'}
+              </button>
+            </div>
+
+            {sortedGalleryRows.length > 0 ? (
+              <div className={styles.galleryManageList}>
+                {sortedGalleryRows.map((image, index) => {
+                  const imageUrl = image.image_url || ''
+                  const isFeatured = imageUrl === (product.image_url || '')
+
+                  return (
+                    <div key={image.id} className={styles.galleryManageRow}>
+                      <div className={styles.galleryManagePreview}>
+                        {imageUrl ? (
+                          <img
+                            src={imageUrl}
+                            alt={`${form.name || 'Product'} gallery ${index + 1}`}
+                            className={styles.galleryManageImage}
+                          />
+                        ) : (
+                          <div className={styles.galleryManagePlaceholder}>No image</div>
+                        )}
+                      </div>
+
+                      <div className={styles.galleryManageContent}>
+                        <div className={styles.galleryManageMeta}>
+                          <span
+                            className={
+                              isFeatured
+                                ? styles.featuredBadge
+                                : styles.galleryIndexBadge
+                            }
+                          >
+                            {isFeatured ? 'Featured' : `Image ${index + 1}`}
+                          </span>
+                          <span className={styles.galleryManageUrl}>{imageUrl}</span>
+                        </div>
+
+                        <div className={styles.galleryManageActions}>
+                          <button
+                            type="button"
+                            onClick={() => handleSetFeatured(image.id)}
+                            disabled={galleryBusy || isFeatured}
+                            className={styles.secondaryButton}
+                          >
+                            Set featured
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleMove(image.id, 'move_left')}
+                            disabled={galleryBusy || index === 0}
+                            className={styles.secondaryButton}
+                          >
+                            ←
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleMove(image.id, 'move_right')}
+                            disabled={galleryBusy || index === sortedGalleryRows.length - 1}
+                            className={styles.secondaryButton}
+                          >
+                            →
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteGallery(image.id)}
+                            disabled={galleryBusy}
+                            className={styles.dangerButton}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <div className={styles.galleryEmpty}>No gallery images yet.</div>
+            )}
           </div>
         </div>
       </div>

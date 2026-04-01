@@ -8,11 +8,12 @@
     "start": "next start",
     "lint": "eslint",
     "import:etsy": "node scripts/import-etsy-to-supabase.mjs"
-
   },
   "dependencies": {
+    "@next/env": "^16.2.2",
     "@supabase/ssr": "^0.9.0",
     "@supabase/supabase-js": "^2.100.0",
+    "dotenv": "^17.3.1",
     "next": "16.2.1",
     "nodemailer": "^8.0.4",
     "react": "19.2.4",

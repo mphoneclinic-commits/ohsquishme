@@ -9,6 +9,12 @@ import { useAuthRole } from '@/components/AuthProvider'
 import { getEffectivePrice } from '@/lib/pricing'
 import styles from './product.module.css'
 
+type ProductImage = {
+  id: string
+  image_url: string
+  sort_order: number
+}
+
 type Product = {
   id: string
   name: string
@@ -18,6 +24,7 @@ type Product = {
   stock: number
   image_url: string | null
   active: boolean
+  product_images?: ProductImage[]
 }
 
 export default function ProductPage() {
@@ -30,6 +37,7 @@ export default function ProductPage() {
   const [errorMessage, setErrorMessage] = useState('')
   const [added, setAdded] = useState(false)
   const [quantity, setQuantity] = useState(1)
+  const [activeImageIndex, setActiveImageIndex] = useState(0)
 
   const { addItem } = useCart()
   const { role, isWholesale, loading: loadingRole } = useAuthRole()
@@ -44,13 +52,33 @@ export default function ProductPage() {
     fetchProductAndRelated(productId)
   }, [productId])
 
+  useEffect(() => {
+    setActiveImageIndex(0)
+    setQuantity(1)
+    setAdded(false)
+  }, [product?.id])
+
   async function fetchProductAndRelated(id: string) {
     setLoading(true)
     setErrorMessage('')
 
     const { data, error } = await supabase
       .from('products')
-      .select('*')
+      .select(`
+        id,
+        name,
+        description,
+        price_retail,
+        price_wholesale,
+        stock,
+        image_url,
+        active,
+        product_images (
+          id,
+          image_url,
+          sort_order
+        )
+      `)
       .eq('id', id)
       .single()
 
@@ -66,7 +94,16 @@ export default function ProductPage() {
 
     const { data: relatedData, error: relatedError } = await supabase
       .from('products')
-      .select('*')
+      .select(`
+        id,
+        name,
+        description,
+        price_retail,
+        price_wholesale,
+        stock,
+        image_url,
+        active
+      `)
       .eq('active', true)
       .neq('id', id)
       .limit(3)
@@ -90,6 +127,24 @@ export default function ProductPage() {
     return 'In stock'
   }, [product])
 
+  const galleryImages = useMemo(() => {
+    if (!product) return []
+
+    const orderedExtraImages = [...(product.product_images || [])]
+      .sort((a, b) => a.sort_order - b.sort_order)
+      .map((item) => item.image_url)
+      .filter(Boolean)
+
+    const combined = [product.image_url, ...orderedExtraImages].filter(
+      (value): value is string => Boolean(value)
+    )
+
+    return Array.from(new Set(combined))
+  }, [product])
+
+  const activeImage =
+    galleryImages[activeImageIndex] || product?.image_url || null
+
   function decreaseQty() {
     setQuantity((current) => Math.max(1, current - 1))
   }
@@ -99,6 +154,20 @@ export default function ProductPage() {
     setQuantity((current) => Math.min(product.stock || 1, current + 1))
   }
 
+  function goToPrevImage() {
+    if (galleryImages.length <= 1) return
+    setActiveImageIndex((current) =>
+      current === 0 ? galleryImages.length - 1 : current - 1
+    )
+  }
+
+  function goToNextImage() {
+    if (galleryImages.length <= 1) return
+    setActiveImageIndex((current) =>
+      current === galleryImages.length - 1 ? 0 : current + 1
+    )
+  }
+
   function handleAddToCart() {
     if (!product || product.stock <= 0) return
 
@@ -106,7 +175,7 @@ export default function ProductPage() {
       id: product.id,
       name: product.name,
       price: effectivePrice,
-      image_url: product.image_url,
+      image_url: activeImage || product.image_url,
       quantity,
     })
 
@@ -137,16 +206,66 @@ export default function ProductPage() {
   return (
     <main className={styles.page}>
       <section className={styles.layout}>
-        <div className={styles.imageWrap}>
-          {product.image_url ? (
-            <img
-              src={product.image_url}
-              alt={product.name}
-              className={styles.image}
-            />
-          ) : (
-            <div className={styles.imagePlaceholder}>No image</div>
-          )}
+        <div className={styles.gallery}>
+          <div className={styles.imageWrap}>
+            {activeImage ? (
+              <>
+                <img
+                  src={activeImage}
+                  alt={product.name}
+                  className={styles.image}
+                />
+
+                {galleryImages.length > 1 ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={goToPrevImage}
+                      className={`${styles.galleryArrow} ${styles.galleryArrowLeft}`}
+                      aria-label="Previous image"
+                    >
+                      ‹
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={goToNextImage}
+                      className={`${styles.galleryArrow} ${styles.galleryArrowRight}`}
+                      aria-label="Next image"
+                    >
+                      ›
+                    </button>
+                  </>
+                ) : null}
+              </>
+            ) : (
+              <div className={styles.imagePlaceholder}>No image</div>
+            )}
+          </div>
+
+          {galleryImages.length > 1 ? (
+            <div className={styles.thumbnailRow}>
+              {galleryImages.map((imageUrl, index) => (
+                <button
+                  key={`${imageUrl}-${index}`}
+                  type="button"
+                  onClick={() => setActiveImageIndex(index)}
+                  className={
+                    index === activeImageIndex
+                      ? `${styles.thumbnailButton} ${styles.thumbnailButtonActive}`
+                      : styles.thumbnailButton
+                  }
+                  aria-label={`View image ${index + 1}`}
+                >
+                  <img
+                    src={imageUrl}
+                    alt={`${product.name} thumbnail ${index + 1}`}
+                    className={styles.thumbnailImage}
+                  />
+                </button>
+              ))}
+            </div>
+          ) : null}
         </div>
 
         <div className={styles.content}>

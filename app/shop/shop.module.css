@@ -6,6 +6,64 @@
   gap: 22px;
 }
 
+.adminBar {
+  border: 1px solid #eadce3;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #fff7fa, #fffdfd);
+  padding: 14px 16px;
+  box-shadow: 0 4px 14px rgba(30, 18, 24, 0.03);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.adminBarText {
+  display: grid;
+  gap: 4px;
+}
+
+.adminBarEyebrow {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: #7a6f76;
+}
+
+.adminBarTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: #2d2428;
+}
+
+.adminBarActions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.adminPrimaryLink,
+.adminSecondaryLink {
+  text-decoration: none;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.adminPrimaryLink {
+  border: 1px solid #111;
+  background: #111;
+  color: #fff;
+}
+
+.adminSecondaryLink {
+  border: 1px solid #d9ccd3;
+  background: #fff;
+  color: inherit;
+}
+
 .hero {
   display: grid;
   gap: 8px;
@@ -263,5 +321,21 @@
   .cardText {
     -webkit-line-clamp: 4;
     min-height: calc(14px * 1.5 * 4);
+  }
+
+  .adminBar {
+    padding: 12px 14px;
+  }
+
+  .adminBarActions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .adminPrimaryLink,
+  .adminSecondaryLink {
+    width: 100%;
+    text-align: center;
   }
 }

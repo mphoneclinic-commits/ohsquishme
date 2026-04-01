@@ -2,6 +2,31 @@ import { NextResponse } from 'next/server'
 import { isAdminFromRequest } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 
+async function fetchProductWithImages(id: string) {
+  const { data, error } = await supabaseAdmin
+    .from('products')
+    .select(`
+      id,
+      name,
+      description,
+      price_retail,
+      price_wholesale,
+      stock,
+      image_url,
+      active,
+      created_at,
+      product_images (
+        id,
+        image_url,
+        sort_order
+      )
+    `)
+    .eq('id', id)
+    .single()
+
+  return { data, error }
+}
+
 export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -23,8 +48,7 @@ export async function PATCH(
     const name = String(body?.name || '').trim()
     const description = body?.description ? String(body.description).trim() : null
     const image_url = body?.image_url ? String(body.image_url).trim() : null
-    const active =
-      typeof body?.active === 'boolean' ? body.active : true
+    const active = typeof body?.active === 'boolean' ? body.active : true
 
     const price_retail = Number(body?.price_retail ?? 0)
     const price_wholesale = Number(body?.price_wholesale ?? 0)
@@ -55,7 +79,7 @@ export async function PATCH(
       )
     }
 
-    const { data: product, error } = await supabaseAdmin
+    const { error } = await supabaseAdmin
       .from('products')
       .update({
         name,
@@ -67,12 +91,19 @@ export async function PATCH(
         active,
       })
       .eq('id', id)
-      .select()
-      .single()
 
-    if (error || !product) {
+    if (error) {
       return NextResponse.json(
-        { error: error?.message || 'Failed to update product' },
+        { error: error.message || 'Failed to update product' },
+        { status: 500 }
+      )
+    }
+
+    const { data: product, error: fetchError } = await fetchProductWithImages(id)
+
+    if (fetchError || !product) {
+      return NextResponse.json(
+        { error: fetchError?.message || 'Failed to reload product' },
         { status: 500 }
       )
     }

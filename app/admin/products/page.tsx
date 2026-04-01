@@ -5,6 +5,12 @@ import styles from './products.module.css'
 
 export const dynamic = 'force-dynamic'
 
+type ProductImageRow = {
+  id: string
+  image_url: string | null
+  sort_order: number | null
+}
+
 type ProductRow = {
   id: string
   name: string | null
@@ -15,6 +21,7 @@ type ProductRow = {
   image_url: string | null
   active: boolean | null
   created_at: string | null
+  product_images?: ProductImageRow[] | null
 }
 
 type StockAdjustmentRow = {
@@ -42,16 +49,29 @@ export default async function AdminProductsPage({
 
   const { data: productsData, error: productsError } = await supabaseAdmin
     .from('products')
-    .select(
-      'id, name, description, price_retail, price_wholesale, stock, image_url, active, created_at'
-    )
+    .select(`
+      id,
+      name,
+      description,
+      price_retail,
+      price_wholesale,
+      stock,
+      image_url,
+      active,
+      created_at,
+      product_images (
+        id,
+        image_url,
+        sort_order
+      )
+    `)
     .order('created_at', { ascending: false })
 
   if (productsError) {
     return (
       <main className={styles.page}>
         <div className={styles.shell}>
-          <div className={styles.errorCard}>
+          <div className={styles.emptyCard}>
             Failed to load products: {productsError.message}
           </div>
         </div>

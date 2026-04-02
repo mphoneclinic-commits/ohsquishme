@@ -14,6 +14,7 @@ function SuccessContent() {
   const { clearCart } = useCart()
   const [cleared, setCleared] = useState(false)
   const [orderNumber, setOrderNumber] = useState<string>('')
+  const [receiptToken, setReceiptToken] = useState<string>('')
 
   useEffect(() => {
     if (!cleared) {
@@ -25,12 +26,12 @@ function SuccessContent() {
   useEffect(() => {
     let active = true
 
-    async function loadOrderNumber() {
+    async function loadOrderData() {
       if (!orderId) return
 
       const { data, error } = await supabase
         .from('orders')
-        .select('order_number')
+        .select('order_number, receipt_token')
         .eq('id', orderId)
         .single()
 
@@ -38,9 +39,10 @@ function SuccessContent() {
       if (error) return
 
       setOrderNumber(String(data?.order_number || ''))
+      setReceiptToken(String(data?.receipt_token || ''))
     }
 
-    loadOrderNumber()
+    loadOrderData()
 
     return () => {
       active = false
@@ -100,6 +102,12 @@ function SuccessContent() {
           <Link href="/account" className={styles.primaryLink}>
             View my account
           </Link>
+
+          {receiptToken ? (
+            <Link href={`/receipt/${receiptToken}`} className={styles.secondaryLink}>
+              Open receipt
+            </Link>
+          ) : null}
 
           <Link href="/shop" className={styles.secondaryLink}>
             Continue shopping

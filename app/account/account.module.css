@@ -238,24 +238,69 @@
 
 .orderList {
   display: grid;
-  gap: 14px;
+  gap: 16px;
 }
 
-.orderCard {
+.orderDisclosure {
   border: 1px solid #f0e5ea;
   border-radius: 16px;
   background: #fffdfd;
-  padding: 16px;
-  display: grid;
-  gap: 14px;
+  overflow: hidden;
 }
 
-.orderHeader {
+.orderDisclosure[open] {
+  box-shadow: 0 8px 20px rgba(30, 18, 24, 0.04);
+}
+
+.orderSummary {
+  list-style: none;
   display: flex;
   justify-content: space-between;
   gap: 14px;
   flex-wrap: wrap;
   align-items: flex-start;
+  padding: 18px 16px;
+  cursor: pointer;
+  transition: background 0.16s ease;
+}
+
+.orderSummary:hover {
+  background: #fff8fb;
+}
+
+.orderSummary::-webkit-details-marker {
+  display: none;
+}
+
+.orderSummaryLeft {
+  min-width: 0;
+}
+
+.orderSummaryRight {
+  display: grid;
+  gap: 8px;
+  justify-items: end;
+  min-width: 160px;
+}
+
+.orderBody {
+  display: grid;
+  gap: 14px;
+  padding: 0 16px 16px;
+  border-top: 1px solid #f3eaee;
+}
+
+.orderActionRow {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-top: 14px;
+}
+
+.orderInfoGrid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1fr 1fr;
 }
 
 .orderTitle {
@@ -269,10 +314,26 @@
   font-size: 14px;
 }
 
-.orderHeaderRight {
-  display: grid;
-  gap: 8px;
-  justify-items: end;
+.orderHint {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 12px;
+  color: #9a7c8d;
+  background: #fff8fb;
+  border: 1px solid #f0dde6;
+  border-radius: 999px;
+  padding: 5px 10px;
+}
+
+.orderChevron {
+  font-size: 16px;
+  color: #9a7c8d;
+  line-height: 1;
+  transition: transform 0.18s ease;
+}
+
+.orderDisclosure[open] .orderChevron {
+  transform: rotate(180deg);
 }
 
 .orderStatus {
@@ -320,6 +381,16 @@
   white-space: nowrap;
 }
 
+.orderEndCap {
+  margin-top: 6px;
+  border-top: 1px dashed #e7d6de;
+  padding-top: 14px;
+  text-align: center;
+  font-size: 13px;
+  color: #8f7282;
+  background: linear-gradient(180deg, transparent 0%, #fff9fb 100%);
+}
+
 .twoCol {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -340,7 +411,6 @@
 .orderTimeline {
   display: grid;
   gap: 8px;
-  margin-top: 12px;
 }
 
 .timelineItem {
@@ -352,11 +422,6 @@
   color: #443841;
 }
 
-@media (max-width: 800px) {
-  .accountGrid {
-    grid-template-columns: 1fr;
-  }
-}
 .adminBox {
   margin-top: 14px;
   padding: 12px 14px;
@@ -372,6 +437,16 @@
   margin-bottom: 6px;
 }
 
+@media (max-width: 800px) {
+  .accountGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .orderInfoGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 700px) {
   .twoCol {
     grid-template-columns: 1fr;
@@ -385,11 +460,20 @@
     font-size: 2rem;
   }
 
-  .orderHeaderRight {
+  .orderSummaryRight {
     justify-items: start;
+    min-width: 0;
   }
 
   .orderItemRow {
     flex-direction: column;
+  }
+
+  .orderSummary {
+    flex-direction: column;
+  }
+
+  .orderHint {
+    width: fit-content;
   }
 }

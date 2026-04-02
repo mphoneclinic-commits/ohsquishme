@@ -1,0 +1,244 @@
+.page {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 32px 20px 56px;
+  display: grid;
+  gap: 16px;
+}
+
+.toolbar {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.card {
+  border: 1px solid #eadce3;
+  border-radius: 24px;
+  background: #fff;
+  padding: 28px;
+  box-shadow: 0 8px 24px rgba(30, 18, 24, 0.05);
+  display: grid;
+  gap: 22px;
+}
+
+.header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 18px;
+  align-items: start;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: #7a6f76;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-brand), Arial, sans-serif;
+  font-size: 2.2rem;
+}
+
+.tagline {
+  margin: 10px 0 6px;
+  color: #665962;
+}
+
+.metaLine {
+  margin: 0;
+  color: #665962;
+  font-size: 14px;
+}
+
+.referenceBox {
+  border: 1px solid #e8b8c8;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #fff0f5 0%, #fff8fb 100%);
+  padding: 18px;
+  display: grid;
+  gap: 8px;
+}
+
+.referenceLabel {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #8a5c72;
+  font-weight: 700;
+}
+
+.referenceValue {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #7d1748;
+}
+
+.referenceStatus {
+  font-size: 13px;
+  color: #665962;
+}
+
+.infoGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.infoCard,
+.infoCardWide {
+  border: 1px solid #f0e5ea;
+  border-radius: 16px;
+  background: #fffdfd;
+  padding: 14px;
+  display: grid;
+  gap: 6px;
+}
+
+.infoCardWide {
+  grid-column: 1 / -1;
+}
+
+.infoLabel {
+  font-size: 12px;
+  color: #7a6f76;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  font-weight: 700;
+}
+
+.infoValue {
+  font-size: 14px;
+  color: #443841;
+  line-height: 1.6;
+}
+
+.itemsSection {
+  display: grid;
+  gap: 12px;
+}
+
+.itemsHeader,
+.itemRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 90px 110px 120px;
+  gap: 12px;
+  align-items: center;
+}
+
+.itemsHeader {
+  padding: 0 4px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #7a6f76;
+  font-weight: 700;
+}
+
+.itemsList {
+  display: grid;
+  gap: 10px;
+}
+
+.itemRow {
+  border: 1px solid #f0e5ea;
+  border-radius: 14px;
+  background: #fff8fb;
+  padding: 12px 14px;
+  font-size: 14px;
+  color: #443841;
+}
+
+.itemName {
+  font-weight: 600;
+}
+
+.totalBox {
+  margin-top: 6px;
+  border-top: 1px solid #eadce3;
+  padding-top: 16px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  font-size: 16px;
+}
+
+.totalBox strong {
+  font-size: 1.25rem;
+}
+
+.footerNote {
+  border-top: 1px solid #f0e5ea;
+  padding-top: 16px;
+  color: #665962;
+  line-height: 1.6;
+  font-size: 14px;
+}
+
+.secondaryLink,
+.printButton {
+  padding: 12px 16px;
+  border-radius: 14px;
+  text-decoration: none;
+  font: inherit;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.secondaryLink {
+  border: 1px solid #d9ccd3;
+  background: #fff;
+  color: inherit;
+}
+
+.printButton {
+  border: 1px solid #111;
+  background: #111;
+  color: #fff;
+  cursor: pointer;
+}
+
+@media (max-width: 800px) {
+  .header {
+    grid-template-columns: 1fr;
+  }
+
+  .infoGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .itemsHeader,
+  .itemRow {
+    grid-template-columns: 1fr;
+  }
+
+  .itemsHeader {
+    display: none;
+  }
+}
+
+@media print {
+  .page {
+    max-width: none;
+    padding: 0;
+  }
+
+  .toolbar {
+    display: none;
+  }
+
+  .card {
+    box-shadow: none;
+    border-radius: 0;
+    border: 0;
+    padding: 0;
+  }
+}

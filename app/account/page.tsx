@@ -15,6 +15,8 @@ type ProfileRow = {
 
 type OrderRow = {
   id: string
+  order_number: string | null
+  receipt_token: string | null
   email: string | null
   total: number | string | null
   status: string | null
@@ -90,6 +92,8 @@ export default async function AccountPage() {
         .from('orders')
         .select(`
           id,
+          order_number,
+          receipt_token,
           email,
           total,
           status,

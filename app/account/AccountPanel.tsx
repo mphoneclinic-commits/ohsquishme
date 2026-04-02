@@ -8,6 +8,8 @@ import styles from './account.module.css'
 
 type OrderRow = {
   id: string
+  order_number: string | null
+  receipt_token: string | null
   email: string | null
   total: number | string | null
   status: string | null
@@ -63,6 +65,24 @@ function formatMoney(value: number | string | null) {
 function formatStatus(status: string | null) {
   if (!status) return 'Unknown'
   return status.replaceAll('_', ' ')
+}
+
+function buildShippingText(order: OrderRow) {
+  return [
+    order.shipping_name,
+    order.shipping_phone,
+    order.shipping_address_line1,
+    order.shipping_address_line2,
+    order.shipping_suburb,
+    order.shipping_state,
+    order.shipping_postcode,
+  ]
+    .filter(Boolean)
+    .join(', ')
+}
+
+function getOrderReference(order: OrderRow) {
+  return order.order_number || `Order ${order.id.slice(0, 8)}`
 }
 
 export default function AccountPanel({
@@ -160,23 +180,21 @@ export default function AccountPanel({
             </div>
           </div>
 
-<div className={styles.actionRow}>
-  {role === 'admin' ? (
-    <a href="/admin" className={styles.primaryButtonLink}>
-      Admin dashboard
-    </a>
-  ) : null}
+          <div className={styles.actionRow}>
+            {role === 'admin' ? (
+              <a href="/admin" className={styles.primaryButtonLink}>
+                Admin dashboard
+              </a>
+            ) : null}
 
-  <button
-    type="button"
-    onClick={handleSignOut}
-    className={styles.secondaryButton}
-  >
-    Sign out
-  </button>
-</div>          
-
-
+            <button
+              type="button"
+              onClick={handleSignOut}
+              className={styles.secondaryButton}
+            >
+              Sign out
+            </button>
+          </div>
         </div>
 
         <div className={styles.card}>
@@ -297,128 +315,146 @@ export default function AccountPanel({
           </div>
         ) : (
           <div className={styles.orderList}>
-            {orders.map((order) => {
+            {orders.map((order, index) => {
               const items = orderItems.filter((item) => item.order_id === order.id)
+              const shippingText = buildShippingText(order)
+              const isOpenByDefault = index === 0
 
               return (
-                <article key={order.id} className={styles.orderCard}>
-                  <div className={styles.orderHeader}>
-                    <div>
+                <details
+                  key={order.id}
+                  className={styles.orderDisclosure}
+                  open={isOpenByDefault}
+                >
+                  <summary className={styles.orderSummary}>
+                    <div className={styles.orderSummaryLeft}>
                       <h3 className={styles.orderTitle}>
-                        Order {order.id.slice(0, 8)}
+                        {getOrderReference(order)}
                       </h3>
                       <p className={styles.orderMeta}>
-                        Placed {formatCreatedAt(order.created_at)}
+                        Placed at {formatCreatedAt(order.created_at)}
                       </p>
+                      <span className={styles.orderHint}>
+                        Click this order to expand or collapse
+                      </span>
                     </div>
 
-                    <div className={styles.orderHeaderRight}>
+                    <div className={styles.orderSummaryRight}>
                       <span className={styles.orderStatus}>
                         {formatStatus(order.status)}
                       </span>
                       <strong className={styles.orderTotal}>
                         {formatMoney(order.total)}
                       </strong>
-                    </div>
-                  </div>
-
-                  {(order.courier || order.tracking_number) ? (
-                    <div className={styles.infoGrid}>
-                      <div className={styles.infoCard}>
-                        <span className={styles.infoLabel}>Courier</span>
-                        <span className={styles.infoValue}>
-                          {order.courier || '—'}
-                        </span>
-                      </div>
-
-                      <div className={styles.infoCard}>
-                        <span className={styles.infoLabel}>Tracking</span>
-                        <span className={styles.infoValue}>
-                          {order.tracking_number || '—'}
-                        </span>
-                      </div>
-                    </div>
-                  ) : null}
-
-                  {(order.shipping_name || order.shipping_address_line1) ? (
-                    <div className={styles.infoCard}>
-                      <span className={styles.infoLabel}>Shipping details</span>
-                      <span className={styles.infoValue}>
-                        {[
-                          order.shipping_name,
-                          order.shipping_phone,
-                          order.shipping_address_line1,
-                          order.shipping_address_line2,
-                          order.shipping_suburb,
-                          order.shipping_state,
-                          order.shipping_postcode,
-                        ]
-                          .filter(Boolean)
-                          .join(', ')}
+                      <span className={styles.orderChevron} aria-hidden="true">
+                        ▾
                       </span>
                     </div>
-                  ) : null}
+                  </summary>
 
-                  <div className={styles.orderTimeline}>
-                    <div className={styles.timelineItem}>
-                      <strong>Placed</strong>
-                      <span>{formatCreatedAt(order.created_at)}</span>
+                  <div className={styles.orderBody}>
+                    <div className={styles.orderActionRow}>
+                      {order.receipt_token ? (
+                        <Link
+                          href={`/receipt/${order.receipt_token}`}
+                          className={styles.secondaryButtonLink}
+                          target="_blank"
+                        >
+                          View receipt
+                        </Link>
+                      ) : null}
+
+                      {order.status === 'shipped' && order.tracking_number ? (
+                        <a
+                          href={`https://track.aftership.com/${order.courier || ''}/${order.tracking_number}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className={styles.primaryButtonLink}
+                        >
+                          Track package
+                        </a>
+                      ) : null}
                     </div>
 
-                    {order.packed_at ? (
-                      <div className={styles.timelineItem}>
-                        <strong>Packed</strong>
-                        <span>{formatCreatedAt(order.packed_at)}</span>
-                      </div>
-                    ) : null}
-
-                    {order.shipped_at ? (
-                      <div className={styles.timelineItem}>
-                        <strong>Shipped</strong>
-                        <span>{formatCreatedAt(order.shipped_at)}</span>
-                      </div>
-                    ) : null}
-
-                    {order.completed_at ? (
-                      <div className={styles.timelineItem}>
-                        <strong>Completed</strong>
-                        <span>{formatCreatedAt(order.completed_at)}</span>
-                      </div>
-                    ) : null}
-                  </div>
-
-                  {order.status === 'shipped' && order.tracking_number ? (
-                    <a
-                      href={`https://track.aftership.com/${order.courier || ''}/${order.tracking_number}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className={styles.primaryButtonLink}
-                    >
-                      Track package
-                    </a>
-                  ) : null}
-
-                  <div className={styles.orderItems}>
-                    {items.map((item) => (
-                      <div key={item.id} className={styles.orderItemRow}>
-                        <div>
-                          <div className={styles.orderItemName}>
-                            {item.name || 'Unnamed item'}
-                          </div>
-                          <div className={styles.orderItemMeta}>
-                            Qty {item.quantity || 0} × {formatMoney(item.price)}
-                          </div>
+                    {(order.courier || order.tracking_number) ? (
+                      <div className={styles.orderInfoGrid}>
+                        <div className={styles.infoCard}>
+                          <span className={styles.infoLabel}>Courier</span>
+                          <span className={styles.infoValue}>
+                            {order.courier || '—'}
+                          </span>
                         </div>
 
-                        <div className={styles.orderItemTotal}>
-                          {formatMoney(
-                            Number(item.price || 0) * Number(item.quantity || 0)
-                          )}
+                        <div className={styles.infoCard}>
+                          <span className={styles.infoLabel}>Tracking</span>
+                          <span className={styles.infoValue}>
+                            {order.tracking_number || '—'}
+                          </span>
                         </div>
                       </div>
-                    ))}
+                    ) : null}
+
+                    {shippingText ? (
+                      <div className={styles.infoCard}>
+                        <span className={styles.infoLabel}>Shipping details</span>
+                        <span className={styles.infoValue}>{shippingText}</span>
+                      </div>
+                    ) : null}
+
+                    <div className={styles.orderTimeline}>
+                      <div className={styles.timelineItem}>
+                        <strong>Placed</strong>
+                        <span>{formatCreatedAt(order.created_at)}</span>
+                      </div>
+
+                      {order.packed_at ? (
+                        <div className={styles.timelineItem}>
+                          <strong>Packed</strong>
+                          <span>{formatCreatedAt(order.packed_at)}</span>
+                        </div>
+                      ) : null}
+
+                      {order.shipped_at ? (
+                        <div className={styles.timelineItem}>
+                          <strong>Shipped</strong>
+                          <span>{formatCreatedAt(order.shipped_at)}</span>
+                        </div>
+                      ) : null}
+
+                      {order.completed_at ? (
+                        <div className={styles.timelineItem}>
+                          <strong>Completed</strong>
+                          <span>{formatCreatedAt(order.completed_at)}</span>
+                        </div>
+                      ) : null}
+                    </div>
+
+                    <div className={styles.orderItems}>
+                      {items.map((item) => (
+                        <div key={item.id} className={styles.orderItemRow}>
+                          <div>
+                            <div className={styles.orderItemName}>
+                              {item.name || 'Unnamed item'}
+                            </div>
+                            <div className={styles.orderItemMeta}>
+                              Qty {item.quantity || 0} × {formatMoney(item.price)}
+                            </div>
+                          </div>
+
+                          <div className={styles.orderItemTotal}>
+                            {formatMoney(
+                              Number(item.price || 0) * Number(item.quantity || 0)
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className={styles.orderEndCap}>
+                      End of this order · click the order header above to collapse
+                    </div>
                   </div>
-                </article>
+                </details>
               )
             })}
           </div>

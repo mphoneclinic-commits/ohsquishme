@@ -3,13 +3,14 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdmin } from '@/lib/auth'
 import OrderStatusForm from './OrderStatusForm'
 import styles from './orders.module.css'
-import { formatDateTime, formatDate } from '@/app/admin/utils'
+import { formatDateTime } from '@/app/admin/utils'
 
 export const dynamic = 'force-dynamic'
 
 type OrderRow = {
   id: string
   order_number: string | null
+  receipt_token: string | null
   email: string | null
   phone: string | null
   total: number | string | null
@@ -119,7 +120,7 @@ export default async function AdminOrdersPage({
   const { data: ordersData, error: ordersError } = await supabaseAdmin
     .from('orders')
     .select(
-      'id, order_number, email, phone, total, status, created_at, paid_at, stripe_session_id, refund_status, refunded_at'
+      'id, order_number, receipt_token, email, phone, total, status, created_at, paid_at, stripe_session_id, refund_status, refunded_at'
     )
     .order('created_at', { ascending: false })
 
@@ -372,6 +373,16 @@ export default async function AdminOrdersPage({
                         >
                           Edit order
                         </Link>
+
+                        {order.receipt_token ? (
+                          <Link
+                            href={`/receipt/${order.receipt_token}`}
+                            className={styles.secondaryLink}
+                            target="_blank"
+                          >
+                            Open receipt
+                          </Link>
+                        ) : null}
                       </div>
                     </div>
 

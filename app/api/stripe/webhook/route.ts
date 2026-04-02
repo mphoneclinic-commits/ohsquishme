@@ -56,10 +56,7 @@ export async function POST(req: Request) {
 
         if (error) {
           console.error('process_paid_order RPC error:', error)
-          return NextResponse.json(
-            { error: error.message },
-            { status: 500 }
-          )
+          return NextResponse.json({ error: error.message }, { status: 500 })
         }
 
         if (data?.ok === false) {
@@ -84,6 +81,7 @@ export async function POST(req: Request) {
           .select(
             `
             id,
+            order_number,
             email,
             phone,
             shipping_name,
@@ -113,6 +111,7 @@ export async function POST(req: Request) {
           try {
             const result = await sendOrderPlacedNotification({
               orderId: order.id,
+              orderNumber: order.order_number,
               email: order.email,
               phone: order.phone,
               shippingName: order.shipping_name,
@@ -172,10 +171,7 @@ export async function POST(req: Request) {
 
         if (error) {
           console.error('Failed to mark payment_failed:', error)
-          return NextResponse.json(
-            { error: error.message },
-            { status: 500 }
-          )
+          return NextResponse.json({ error: error.message }, { status: 500 })
         }
 
         break

@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { sendOrderSMS } from './sms/sendOrderSMS'
 
 type LogNotificationArgs = {
   orderId?: string | null
@@ -92,6 +93,10 @@ function textToHtml(text: string) {
   return `<div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.6;color:#2d2428;white-space:pre-line;">${escapeHtml(
     text
   )}</div>`
+}
+
+function getOrderReference(orderId: string, orderNumber?: string | null) {
+  return orderNumber?.trim() || orderId.slice(0, 8)
 }
 
 export async function sendSMS({
@@ -238,22 +243,23 @@ export async function sendEmail({
 
 export async function sendOrderPlacedNotification(args: {
   orderId: string
+  orderNumber?: string | null
   email?: string | null
   phone?: string | null
   shippingName?: string | null
   notifySms?: boolean
   notifyEmail?: boolean
 }) {
-  const shortOrderId = args.orderId.slice(0, 8)
+  const orderRef = getOrderReference(args.orderId, args.orderNumber)
   const name = args.shippingName?.trim() || 'there'
 
-  const sms = `Hi ${name}, thanks for your order with Oh Squish Me. We’ve received order ${shortOrderId} and are processing it now 💖`
+  const sms = `Hi ${name}, thanks for your order with Oh Squish Me. We’ve received order ${orderRef} and are processing it now 💖`
 
   const emailText = `Hi ${name},
 
 Thanks for your order with Oh Squish Me.
 
-We’ve received your order ${shortOrderId} and it is now being processed.
+We’ve received your order ${orderRef} and it is now being processed.
 
 We’ll send another update when it moves through packing and shipping.
 
@@ -276,7 +282,7 @@ Thank you for supporting Oh Squish Me 💕`
   if (args.notifyEmail && args.email?.trim()) {
     result.emailSent = await sendEmail({
       to: args.email.trim(),
-      subject: `Order ${shortOrderId} confirmed`,
+      subject: `Order ${orderRef} confirmed`,
       text: emailText,
       orderId: args.orderId,
       eventType: 'order_placed',
@@ -288,6 +294,7 @@ Thank you for supporting Oh Squish Me 💕`
 
 export async function sendOrderShippedNotification(args: {
   orderId: string
+  orderNumber?: string | null
   email?: string | null
   phone?: string | null
   shippingName?: string | null
@@ -296,18 +303,18 @@ export async function sendOrderShippedNotification(args: {
   notifySms?: boolean
   notifyEmail?: boolean
 }) {
-  const shortOrderId = args.orderId.slice(0, 8)
+  const orderRef = getOrderReference(args.orderId, args.orderNumber)
   const name = args.shippingName?.trim() || 'there'
   const courierText = args.courier?.trim() ? ` via ${args.courier.trim()}` : ''
   const trackingText = args.trackingNumber?.trim()
     ? ` Tracking: ${args.trackingNumber.trim()}.`
     : ''
 
-  const sms = `Hi ${name}, your Oh Squish Me order ${shortOrderId} has shipped${courierText}.${trackingText}`
+  const sms = `Hi ${name}, your Oh Squish Me order ${orderRef} has shipped${courierText}.${trackingText}`
 
   const emailText = `Hi ${name},
 
-Your Oh Squish Me order ${shortOrderId} has shipped${courierText}.${trackingText}
+Your Oh Squish Me order ${orderRef} has shipped${courierText}.${trackingText}
 
 Thank you for your order.`
 
@@ -328,7 +335,7 @@ Thank you for your order.`
   if (args.notifyEmail !== false && args.email?.trim()) {
     result.emailSent = await sendEmail({
       to: args.email.trim(),
-      subject: `Your order ${shortOrderId} has shipped`,
+      subject: `Your order ${orderRef} has shipped`,
       text: emailText,
       orderId: args.orderId,
       eventType: 'order_shipped',
@@ -340,20 +347,21 @@ Thank you for your order.`
 
 export async function sendOrderCompletedNotification(args: {
   orderId: string
+  orderNumber?: string | null
   email?: string | null
   phone?: string | null
   shippingName?: string | null
   notifySms?: boolean
   notifyEmail?: boolean
 }) {
-  const shortOrderId = args.orderId.slice(0, 8)
+  const orderRef = getOrderReference(args.orderId, args.orderNumber)
   const name = args.shippingName?.trim() || 'there'
 
-  const sms = `Hi ${name}, your Oh Squish Me order ${shortOrderId} is now completed. Thank you!`
+  const sms = `Hi ${name}, your Oh Squish Me order ${orderRef} is now completed. Thank you!`
 
   const emailText = `Hi ${name},
 
-Your Oh Squish Me order ${shortOrderId} is now completed.
+Your Oh Squish Me order ${orderRef} is now completed.
 
 Thank you for shopping with us.`
 
@@ -374,7 +382,7 @@ Thank you for shopping with us.`
   if (args.notifyEmail !== false && args.email?.trim()) {
     result.emailSent = await sendEmail({
       to: args.email.trim(),
-      subject: `Your order ${shortOrderId} is completed`,
+      subject: `Your order ${orderRef} is completed`,
       text: emailText,
       orderId: args.orderId,
       eventType: 'order_completed',

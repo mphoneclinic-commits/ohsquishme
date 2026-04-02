@@ -7,6 +7,7 @@ export const dynamic = 'force-dynamic'
 
 type OrderRow = {
   id: string
+  order_number: string | null
   email: string | null
   phone: string | null
   total: number | string | null
@@ -53,6 +54,7 @@ export default async function AdminOrderEditPage({
     .select(
       `
       id,
+      order_number,
       email,
       phone,
       total,

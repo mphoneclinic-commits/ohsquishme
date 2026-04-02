@@ -3,10 +3,11 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import styles from './order-edit.module.css'
-import { formatDateTime, formatDate, formatTime, formatRelativeTime } from '@/app/admin/utils'
+import { formatDateTime } from '@/app/admin/utils'
 
 type OrderRow = {
   id: string
+  order_number: string | null
   email: string | null
   phone: string | null
   total: number | string | null
@@ -52,8 +53,6 @@ const STATUS_OPTIONS = [
 function formatMoney(value: number | string | null) {
   return `$${Number(value || 0).toFixed(2)}`
 }
-
-
 
 export default function OrderEditor({
   order,
@@ -108,9 +107,9 @@ export default function OrderEditor({
     }
   }
 
-async function handleQuickStatus(
-  nextStatus: 'packed' | 'shipped' | 'completed' | 'closed'
-) {
+  async function handleQuickStatus(
+    nextStatus: 'packed' | 'shipped' | 'completed' | 'closed'
+  ) {
     const nextForm = {
       ...form,
       status: nextStatus,
@@ -185,7 +184,9 @@ async function handleQuickStatus(
       <div className={styles.topRow}>
         <div>
           <p className={styles.eyebrow}>Admin</p>
-          <h1 className={styles.title}>Edit Order {order.id.slice(0, 8)}</h1>
+          <h1 className={styles.title}>
+            {order.order_number || `Edit Order ${order.id.slice(0, 8)}`}
+          </h1>
         </div>
       </div>
 
@@ -402,14 +403,16 @@ async function handleQuickStatus(
           >
             Refund + Restock
           </button>
-<button
-  type="button"
-  onClick={() => handleQuickStatus('closed')}
-  disabled={saving}
-  className={styles.secondaryButton}
->
-  Mark Closed
-</button>
+
+          <button
+            type="button"
+            onClick={() => handleQuickStatus('closed')}
+            disabled={saving}
+            className={styles.secondaryButton}
+          >
+            Mark Closed
+          </button>
+
           <button
             type="button"
             onClick={handleDeleteOrder}

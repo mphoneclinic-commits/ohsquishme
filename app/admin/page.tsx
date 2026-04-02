@@ -182,7 +182,7 @@ export default async function AdminHomePage() {
           <DashboardCard
             label="Orders to process"
             value={ordersToProcess.length}
-            link="/admin/orders?status=pending"
+            link="/admin/orders?status=awaiting_payment"
             tone="urgent"
             helper="New, paid or awaiting payment"
           />

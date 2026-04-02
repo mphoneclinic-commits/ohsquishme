@@ -3,13 +3,13 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdmin } from '@/lib/auth'
 import OrderStatusForm from './OrderStatusForm'
 import styles from './orders.module.css'
-import { formatDateTime, formatDate, formatTime, formatRelativeTime } from '@/app/admin/utils'
-
+import { formatDateTime, formatDate } from '@/app/admin/utils'
 
 export const dynamic = 'force-dynamic'
 
 type OrderRow = {
   id: string
+  order_number: string | null
   email: string | null
   phone: string | null
   total: number | string | null
@@ -119,7 +119,7 @@ export default async function AdminOrdersPage({
   const { data: ordersData, error: ordersError } = await supabaseAdmin
     .from('orders')
     .select(
-      'id, email, phone, total, status, created_at, paid_at, stripe_session_id, refund_status, refunded_at'
+      'id, order_number, email, phone, total, status, created_at, paid_at, stripe_session_id, refund_status, refunded_at'
     )
     .order('created_at', { ascending: false })
 
@@ -203,6 +203,7 @@ export default async function AdminOrdersPage({
 
     const haystack = [
       order.id,
+      order.order_number || '',
       order.email || '',
       order.phone || '',
       order.status || '',
@@ -258,7 +259,7 @@ export default async function AdminOrdersPage({
             type="text"
             name="q"
             defaultValue={q}
-            placeholder="Search by email, phone, order id, item name..."
+            placeholder="Search by order reference, email, phone, item name..."
             className={styles.input}
           />
 
@@ -333,7 +334,7 @@ export default async function AdminOrdersPage({
                     <div>
                       <div className={styles.orderHeadingRow}>
                         <h2 className={styles.orderTitle}>
-                          Order {order.id.slice(0, 8)}
+                          {order.order_number || `Order ${order.id.slice(0, 8)}`}
                         </h2>
 
                         <span className={styles.statusBadge}>
@@ -345,9 +346,19 @@ export default async function AdminOrdersPage({
                         <InfoRow label="Customer Email" value={order.email || '—'} />
                         <InfoRow label="Phone" value={order.phone || '—'} />
                         <InfoRow label="Total" value={formatMoney(order.total)} />
-                        <InfoRow label="Created" value={formatDate(order.created_at)} />
-                        <InfoRow label="Paid At" value={formatDate(order.paid_at)} />
+                        <InfoRow
+                          label="Created At"
+                          value={formatDateTime(order.created_at)}
+                        />
+                        <InfoRow
+                          label="Paid At"
+                          value={formatDateTime(order.paid_at)}
+                        />
                         <InfoRow label="Items" value={String(itemCount)} />
+                        <InfoRow
+                          label="Order Reference"
+                          value={order.order_number || '—'}
+                        />
                         <InfoRow
                           label="Stripe Session"
                           value={order.stripe_session_id || '—'}

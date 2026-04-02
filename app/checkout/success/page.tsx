@@ -4,14 +4,16 @@ import Link from 'next/link'
 import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useCart } from '@/components/CartProvider'
+import { supabase } from '@/lib/supabase'
 import styles from './success.module.css'
 
 function SuccessContent() {
   const searchParams = useSearchParams()
-  const sessionId = searchParams.get('session_id')
+  const orderId = searchParams.get('order_id')
 
   const { clearCart } = useCart()
   const [cleared, setCleared] = useState(false)
+  const [orderNumber, setOrderNumber] = useState<string>('')
 
   useEffect(() => {
     if (!cleared) {
@@ -19,6 +21,31 @@ function SuccessContent() {
       setCleared(true)
     }
   }, [clearCart, cleared])
+
+  useEffect(() => {
+    let active = true
+
+    async function loadOrderNumber() {
+      if (!orderId) return
+
+      const { data, error } = await supabase
+        .from('orders')
+        .select('order_number')
+        .eq('id', orderId)
+        .single()
+
+      if (!active) return
+      if (error) return
+
+      setOrderNumber(String(data?.order_number || ''))
+    }
+
+    loadOrderNumber()
+
+    return () => {
+      active = false
+    }
+  }, [orderId])
 
   return (
     <main className={styles.page}>
@@ -33,7 +60,17 @@ function SuccessContent() {
           Your payment was successful and your order is now being processed.
         </p>
 
-        <div className={styles.infoGrid}>
+        {orderNumber ? (
+          <section className={styles.referenceHero}>
+            <div className={styles.referenceLabel}>Order reference</div>
+            <div className={styles.referenceValue}>{orderNumber}</div>
+            <p className={styles.referenceHelp}>
+              Save this reference in case you need help with your order.
+            </p>
+          </section>
+        ) : null}
+
+        <section className={styles.infoGrid}>
           <div className={styles.infoCard}>
             <span className={styles.infoLabel}>What happens next</span>
             <span className={styles.infoValue}>
@@ -57,14 +94,7 @@ function SuccessContent() {
               pricing.
             </span>
           </div>
-
-          {sessionId ? (
-            <div className={styles.infoCard}>
-              <span className={styles.infoLabel}>Session reference</span>
-              <span className={styles.infoMono}>{sessionId}</span>
-            </div>
-          ) : null}
-        </div>
+        </section>
 
         <div className={styles.actionRow}>
           <Link href="/account" className={styles.primaryLink}>

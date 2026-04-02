@@ -56,59 +56,35 @@ export async function POST(req: Request) {
     }
 
     if (!email?.trim()) {
-      return NextResponse.json(
-        { error: 'Email is required' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Email is required' }, { status: 400 })
     }
 
     if (!phone?.trim()) {
-      return NextResponse.json(
-        { error: 'Phone number is required' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Phone number is required' }, { status: 400 })
     }
 
     if (!shipping_name?.trim()) {
-      return NextResponse.json(
-        { error: 'Shipping name is required' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Shipping name is required' }, { status: 400 })
     }
 
     if (!shipping_phone?.trim()) {
-      return NextResponse.json(
-        { error: 'Shipping phone is required' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Shipping phone is required' }, { status: 400 })
     }
 
     if (!shipping_address_line1?.trim()) {
-      return NextResponse.json(
-        { error: 'Address line 1 is required' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Address line 1 is required' }, { status: 400 })
     }
 
     if (!shipping_suburb?.trim()) {
-      return NextResponse.json(
-        { error: 'Suburb is required' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Suburb is required' }, { status: 400 })
     }
 
     if (!shipping_state?.trim()) {
-      return NextResponse.json(
-        { error: 'State is required' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'State is required' }, { status: 400 })
     }
 
     if (!shipping_postcode?.trim()) {
-      return NextResponse.json(
-        { error: 'Postcode is required' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Postcode is required' }, { status: 400 })
     }
 
     const wantsSms = notify_sms !== false
@@ -130,15 +106,10 @@ export async function POST(req: Request) {
 
     if (productsError) {
       console.error('Product lookup error:', productsError)
-      return NextResponse.json(
-        { error: productsError.message },
-        { status: 500 }
-      )
+      return NextResponse.json({ error: productsError.message }, { status: 500 })
     }
 
-    const productMap = new Map(
-      (products || []).map((p: ProductRow) => [p.id, p])
-    )
+    const productMap = new Map((products || []).map((p: ProductRow) => [p.id, p]))
 
     for (const item of items) {
       const dbProduct = productMap.get(item.id)
@@ -171,6 +142,19 @@ export async function POST(req: Request) {
       return sum + Number(item.price) * Number(item.quantity)
     }, 0)
 
+    const { data: orderNumberData, error: orderNumberError } = await supabaseAdmin
+      .rpc('generate_osm_order_number')
+
+    if (orderNumberError || !orderNumberData) {
+      console.error('Order number generation error:', orderNumberError)
+      return NextResponse.json(
+        { error: orderNumberError?.message || 'Failed to generate order number' },
+        { status: 500 }
+      )
+    }
+
+    const orderNumber = String(orderNumberData)
+
     const { data: order, error: orderError } = await supabaseAdmin
       .from('orders')
       .insert({
@@ -188,8 +172,9 @@ export async function POST(req: Request) {
         notify_email: wantsEmail,
         total,
         status: 'pending',
+        order_number: orderNumber,
       })
-      .select()
+      .select('id, order_number')
       .single()
 
     if (orderError || !order) {
@@ -214,10 +199,7 @@ export async function POST(req: Request) {
 
     if (itemsError) {
       console.error('Order items insert error:', itemsError)
-      return NextResponse.json(
-        { error: itemsError.message },
-        { status: 500 }
-      )
+      return NextResponse.json({ error: itemsError.message }, { status: 500 })
     }
 
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
@@ -232,7 +214,7 @@ export async function POST(req: Request) {
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
       customer_email: email.trim(),
-      success_url: `${siteUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${siteUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}&order_id=${order.id}`,
       cancel_url: `${siteUrl}/checkout/cancel?order_id=${order.id}`,
       line_items: items.map((item) => ({
         quantity: item.quantity,
@@ -246,6 +228,7 @@ export async function POST(req: Request) {
       })),
       metadata: {
         order_id: order.id,
+        order_number: order.order_number,
         email: email.trim(),
         phone: phone.trim(),
         shipping_name: shipping_name.trim(),
@@ -276,6 +259,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       url: session.url,
       orderId: order.id,
+      orderNumber: order.order_number,
     })
   } catch (error) {
     console.error('Checkout route error:', error)
